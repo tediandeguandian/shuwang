@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>鼠王的小站</title>
 <link rel="icon" href="favicon.png" type="image/png">
-<!-- 添加marked.js库 -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -28,6 +27,7 @@
         width: 100%;
         max-width: 700px;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
     }
     .container:hover {
         transform: translateY(-5px);
@@ -137,13 +137,11 @@
         color: #2d3748;
         animation: slideIn 0.3s ease;
     }
-    /* 添加Markdown样式 */
     .response.markdown-content {
         background: white;
         border-left: 4px solid #4facfe;
         padding: 20px;
         border-radius: 0 12px 12px 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
     .response.markdown-content h1, .response.markdown-content h2, .response.markdown-content h3 { margin: 1em 0 0.5em 0; color: #2d3748; }
     .response.markdown-content p { margin: 0.8em 0; line-height: 1.6; }
@@ -173,10 +171,6 @@
     }
     .response.markdown-content a { color: #4facfe; text-decoration: none; }
     .response.markdown-content a:hover { text-decoration: underline; }
-    .response.markdown-content table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-    .response.markdown-content th, .response.markdown-content td { border: 1px solid #dfe2e5; padding: 8px 12px; text-align: left; }
-    .response.markdown-content th { background-color: #f8f9fa; font-weight: 600; }
-
     .loading {
         text-align: center;
         color: #718096;
@@ -199,34 +193,11 @@
         40% { content: ".."; }
         60%, 100% { content: "..."; }
     }
-    /* 响应式设计 */
     @media (max-width: 768px) {
         .container { padding: 25px; margin: 10px; }
         h1 { font-size: 24px; }
         textarea { height: 120px; }
     }
-    /* 添加一些装饰元素 */
-    .container::before {
-        content: "";
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
-    }
-    .container::after {
-        content: "";
-        position: absolute;
-        bottom: -30px;
-        left: -30px;
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(79, 172, 254, 0.05), rgba(0, 242, 254, 0.05));
-    }
-    /* 版本提示样式 */
     .version-tag {
         position: fixed;
         top: 20px;
@@ -249,21 +220,21 @@
 </style>
 </head>
 <body>
-    <!-- 添加版本提示 -->
-    <div class="version-tag" id="version-tag">v1.0.0</div>
+    <div class="version-tag" id="version-tag">v1.0.3</div>
     <div class="container">
         <h1>🤖 AI模型</h1>
         <div class="model-section">
             <label for="model-select">🧠 选择 AI 模型:</label>
             <select id="model-select">
+                <!-- ✅ 新增的选项 -->
+                <option value="kevinllm" selected>KevinLLM (新增API)</option>
                 <option value="LongCat-Flash-Chat">LongCat-Flash-Chat (平衡)</option>
-                <option value="LongCat-Flash-Lite" selected>LongCat-Flash-Lite (默认)</option>
+                <option value="LongCat-Flash-Lite">LongCat-Flash-Lite (默认)</option>
                 <option value="LongCat-Flash-Thinking">LongCat-Flash-Thinking (有创造力)</option>
                 <option value="LongCat-Flash-Thinking-2601">LongCat-Flash-Thinking-2601 (新版)</option>
                 <option value="PaddlePaddle/PaddleOCR-VL-1.5">PaddleOCR-VL-1.5 (支持图像)</option>
             </select>
         </div>
-        <!-- 添加图像输入区域 -->
         <div class="input-section" id="image-section" style="display: none;">
             <label for="image-input">🖼️ 上传图像 (可选):</label>
             <input type="file" id="image-input" accept="image/*" style="margin-bottom: 10px;">
@@ -285,9 +256,6 @@
 
 <script>
 // ================== 配置区域 ==================
-
-// API 提供商配置
-// 在此处添加或修改您的 API 服务
 const API_PROVIDERS = {
     longcat: {
         baseUrl: 'https://api.longcat.chat/openai/v1',
@@ -297,17 +265,24 @@ const API_PROVIDERS = {
         baseUrl: 'https://api.siliconflow.cn/v1',
         apiKey: "sk-tzyunnxpemyjoxxwgwynhpopwofaupijtmkrvrmkrvmdrzin"
     },
+    // ✅ 新增的 API 提供商
     kevinllm: {
         baseUrl: 'https://gateway.kevinllm.v6.army',
         apiKey: "sk-MkK0jIWYozqpC19mqo6hzZ91FRcmadxJmq71hQ3skhGi72ku"
     }
 };
 
-// 版本信息
-const VERSION = "v1.0.1";
+const VERSION = "v1.0.3";
 
-// 模型配置
+// ✅ 新增模型配置，指向 kevinllm 提供商
+// 注意：如果该 API 有特定的模型名称要求，请修改下方的 model 字段
 const MODEL_CONFIGS = {
+    "kevinllm": { 
+        model: "gpt-4o-mini", // ⚠️ 请根据实际可用模型名修改此处
+        max_tokens: 4096, 
+        temperature: 0.7, 
+        apiProvider: "kevinllm" 
+    },
     "LongCat-Flash-Chat": { max_tokens: 5000, temperature: 0.7, apiProvider: "longcat" },
     "LongCat-Flash-Lite": { max_tokens: 10000, temperature: 0.5, apiProvider: "longcat" },
     "LongCat-Flash-Thinking": { max_tokens: 8000, temperature: 0.9, apiProvider: "longcat" },
@@ -316,12 +291,29 @@ const MODEL_CONFIGS = {
 };
 
 // ================== 脚本逻辑 ==================
-
-let currentModel = "LongCat-Flash-Lite";
+let currentModel = "kevinllm"; // ✅ 默认选中新模型
 let currentImageBase64 = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('version-tag').textContent = VERSION;
+    
+    const modelSelect = document.getElementById('model-select');
+    // 初始化时触发一次 change 事件以正确显示/隐藏图片上传区
+    modelSelect.dispatchEvent(new Event('change'));
+
+    modelSelect.addEventListener('change', function(e) {
+        currentModel = e.target.value;
+        const modelConfig = MODEL_CONFIGS[currentModel];
+        const imageSection = document.getElementById('image-section');
+        
+        if (modelConfig && modelConfig.supportImage) {
+            imageSection.style.display = 'block';
+        } else {
+            imageSection.style.display = 'none';
+            currentImageBase64 = null;
+            document.getElementById('image-preview').innerHTML = '';
+        }
+    });
 
     document.getElementById('image-input').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -360,15 +352,6 @@ async function callAI() {
         return;
     }
 
-    const imageSection = document.getElementById('image-section');
-    if (modelConfig.supportImage) {
-        imageSection.style.display = 'block';
-    } else {
-        imageSection.style.display = 'none';
-        currentImageBase64 = null;
-        document.getElementById('image-preview').innerHTML = '';
-    }
-
     responseDiv.style.display = 'none';
     loadingDiv.style.display = 'block';
     submitBtn.disabled = true;
@@ -385,26 +368,27 @@ async function callAI() {
                 'Authorization': `Bearer ${apiConfig.apiKey}`
             };
 
+            // ✅ 使用配置中的 model 字段，而非下拉框的 value
+            const actualModel = modelConfig.model || currentModel;
+
             let requestBody;
-            if (modelConfig.apiProvider === "siliconflow" && currentImageBase64) {
+            if (modelConfig.supportImage && currentImageBase64) {
                 requestBody = {
-                    "model": currentModel,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                { "type": "text", "text": prompt },
-                                { "type": "image_url", "image_url": { "url": currentImageBase64 } }
-                            ]
-                        }
-                    ],
+                    "model": actualModel,
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            { "type": "text", "text": prompt },
+                            { "type": "image_url", "image_url": { "url": currentImageBase64 } }
+                        ]
+                    }],
                     "max_tokens": modelConfig.max_tokens,
                     "temperature": modelConfig.temperature
                 };
             } else {
                 requestBody = {
-                    model: currentModel,
-                    messages: [ { role: "user", content: prompt } ],
+                    model: actualModel,
+                    messages: [{ role: "user", content: prompt }],
                     max_tokens: modelConfig.max_tokens,
                     temperature: modelConfig.temperature
                 };
@@ -421,11 +405,33 @@ async function callAI() {
             if (response.ok) {
                 const markdownContent = data.choices[0].message.content;
                 const htmlContent = marked.parse(markdownContent);
-                responseDiv.innerHTML = `<strong>使用的模型: ${currentModel}</strong><br><br><div class="markdown-content">${htmlContent}</div>`;
+                responseDiv.innerHTML = `<strong>使用的模型: ${actualModel}</strong><br><br><div class="markdown-content">${htmlContent}</div>`;
                 responseDiv.classList.remove('error');
                 break;
             } else if (response.status === 429) {
                 retryCount++;
-                console.warn(`收到429错误，第${retryCount}次重试`);
                 if (retryCount < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 100
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                    continue;
+                }
+            } 
+            
+            throw new Error(data.error?.message || `HTTP ${response.status}`);
+            
+        } catch (err) {
+            if (retryCount >= maxRetries) {
+                responseDiv.innerHTML = `❌ 请求失败: ${err.message}`;
+                responseDiv.classList.add('error');
+                break;
+            }
+        }
+    }
+
+    responseDiv.style.display = 'block';
+    loadingDiv.style.display = 'none';
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>🚀 发送</span>';
+}
+</script>
+</body>
+</html>
