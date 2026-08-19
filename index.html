@@ -220,14 +220,15 @@
 </style>
 </head>
 <body>
-    <div class="version-tag" id="version-tag">v1.0.3</div>
+    <div class="version-tag" id="version-tag">v1.0.4</div>
     <div class="container">
         <h1>🤖 AI模型</h1>
         <div class="model-section">
             <label for="model-select">🧠 选择 AI 模型:</label>
             <select id="model-select">
-                <!-- ✅ 新增的选项 -->
-                <option value="kevinllm" selected>KevinLLM (新增API)</option>
+                <option value="kevinllm">KevinLLM (新增API)</option>
+                <!-- ✅ 新增 OpenRouter 选项 -->
+                <option value="OpenRouter-Default">OpenRouter (glm5.2)</option>
                 <option value="LongCat-Flash-Chat">LongCat-Flash-Chat (平衡)</option>
                 <option value="LongCat-Flash-Lite">LongCat-Flash-Lite (默认)</option>
                 <option value="LongCat-Flash-Thinking">LongCat-Flash-Thinking (有创造力)</option>
@@ -265,23 +266,32 @@ const API_PROVIDERS = {
         baseUrl: 'https://api.siliconflow.cn/v1',
         apiKey: "sk-tzyunnxpemyjoxxwgwynhpopwofaupijtmkrvrmkrvmdrzin"
     },
-    // ✅ 新增的 API 提供商
     kevinllm: {
         baseUrl: 'https://gateway.kevinllm.v6.army',
         apiKey: "sk-MkK0jIWYozqpC19mqo6hzZ91FRcmadxJmq71hQ3skhGi72ku"
+    },
+    // ✅ 新增 OpenRouter 提供商
+    openrouter: {
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiKey: "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"
     }
 };
 
-const VERSION = "v1.0.3";
+const VERSION = "v1.0.4";
 
-// ✅ 新增模型配置，指向 kevinllm 提供商
-// 注意：如果该 API 有特定的模型名称要求，请修改下方的 model 字段
 const MODEL_CONFIGS = {
     "kevinllm": { 
-        model: "gpt-4o-mini", // ⚠️ 请根据实际可用模型名修改此处
+        model: "deepseek-v4-falsh", 
         max_tokens: 4096, 
         temperature: 0.7, 
         apiProvider: "kevinllm" 
+    },
+    // ✅ 新增 OpenRouter 模型配置
+    "OpenRouter-Default": {
+        model: "z-ai/glm-5.2:free", // OpenRouter 标准模型ID格式
+        max_tokens: 4096,
+        temperature: 0.7,
+        apiProvider: "openrouter"
     },
     "LongCat-Flash-Chat": { max_tokens: 5000, temperature: 0.7, apiProvider: "longcat" },
     "LongCat-Flash-Lite": { max_tokens: 10000, temperature: 0.5, apiProvider: "longcat" },
@@ -291,14 +301,13 @@ const MODEL_CONFIGS = {
 };
 
 // ================== 脚本逻辑 ==================
-let currentModel = "kevinllm"; // ✅ 默认选中新模型
+let currentModel = "kevinllm";
 let currentImageBase64 = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('version-tag').textContent = VERSION;
     
     const modelSelect = document.getElementById('model-select');
-    // 初始化时触发一次 change 事件以正确显示/隐藏图片上传区
     modelSelect.dispatchEvent(new Event('change'));
 
     modelSelect.addEventListener('change', function(e) {
@@ -363,12 +372,17 @@ async function callAI() {
     while (retryCount < maxRetries) {
         try {
             const apiUrl = `${apiConfig.baseUrl}/chat/completions`;
+            
+            // ✅ OpenRouter 需要额外的 HTTP-Referer 头
             const headers = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiConfig.apiKey}`
             };
+            if (modelConfig.apiProvider === 'openrouter') {
+                headers['HTTP-Referer'] = window.location.href || 'https://shuwang.site';
+                headers['X-Title'] = '鼠王的小站';
+            }
 
-            // ✅ 使用配置中的 model 字段，而非下拉框的 value
             const actualModel = modelConfig.model || currentModel;
 
             let requestBody;
