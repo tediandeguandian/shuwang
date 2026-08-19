@@ -3,147 +3,429 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 对话助手</title>
+<title>鼠王的小站</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<!-- 添加marked.js库 -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-        background: #f0f2f5;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-    /* ===== 顶部栏 ===== */
-    header {
-        background: #fff;
-        padding: 12px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 1px 4px rgba(0,0,0,.08);
-        z-index: 10;
-    }
-    header h1 { font-size: 18px; color: #333; }
-    .btn {
-        border: none;
-        border-radius: 6px;
-        padding: 8px 16px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: opacity .2s;
-    }
-    .btn:hover { opacity: .85; }
-    .btn-primary { background: #4f6ef7; color: #fff; }
-    .btn-gray { background: #e8eaed; color: #444; }
-    .btn-danger { background: #ff5c5c; color: #fff; }
-
-    /* ===== 设置面板 ===== */
-    #settingsPanel {
-        display: none;
-        background: #fff;
-        padding: 16px 20px;
-        border-bottom: 1px solid #e5e5e5;
-    }
-    #settingsPanel.show { display: block; }
-    .form-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
-    .form-group { flex: 1; min-width: 220px; }
-    .form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
-    .form-group input, .form-group textarea {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid #d0d0d0;
-        border-radius: 6px;
-        font-size: 14px;
-        outline: none;
-    }
-    .form-group input:focus, .form-group textarea:focus { border-color: #4f6ef7; }
-
-    /* ===== 聊天区 ===== */
-    #chatBox {
-        flex: 1;
-        overflow-y: auto;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        min-height: 100vh;
         padding: 20px;
         display: flex;
-        flex-direction: column;
-        gap: 14px;
+        align-items: center;
+        justify-content: center;
     }
-    .msg { display: flex; max-width: 80%; }
-    .msg.user { align-self: flex-end; }
-    .msg.assistant { align-self: flex-start; }
-    .bubble {
-        padding: 10px 14px;
+    .container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        padding: 40px;
+        width: 100%;
+        max-width: 700px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+    }
+    h1 {
+        color: #2d3748;
+        text-align: center;
+        margin-bottom: 30px;
+        font-weight: 600;
+        font-size: 28px;
+        background: linear-gradient(90deg, #4facfe, #00f2fe);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .input-section { margin-bottom: 25px; }
+    label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 500;
+        color: #4a5568;
+        font-size: 16px;
+    }
+    textarea {
+        width: 100%;
+        height: 150px;
+        padding: 15px;
+        border: 2px solid #e2e8f0;
         border-radius: 12px;
-        font-size: 15px;
-        line-height: 1.6;
-        word-break: break-word;
-    }
-    .user .bubble { background: #4f6ef7; color: #fff; border-bottom-right-radius: 2px; }
-    .assistant .bubble { background: #fff; color: #333; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .bubble pre { background: #282c34; color: #e6e6e6; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
-    .bubble code { font-family: Consolas, monospace; font-size: 13px; }
-    .bubble p code, .bubble li code { background: #f0f0f0; color: #c7254e; padding: 1px 4px; border-radius: 3px; }
-    .bubble ul, .bubble ol { padding-left: 20px; }
-
-    /* ===== 输入区 ===== */
-    footer {
-        background: #fff;
-        padding: 12px 20px;
-        display: flex;
-        gap: 10px;
-        box-shadow: 0 -1px 4px rgba(0,0,0,.06);
-    }
-    #userInput {
-        flex: 1;
-        resize: none;
-        border: 1px solid #d0d0d0;
-        border-radius: 8px;
-        padding: 10px 12px;
-        font-size: 15px;
-        outline: none;
-        max-height: 120px;
+        resize: vertical;
         font-family: inherit;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: #fff;
     }
-    #userInput:focus { border-color: #4f6ef7; }
-    .typing::after {
-        content: '▍';
-        animation: blink 1s infinite;
+    textarea:focus {
+        outline: none;
+        border-color: #4facfe;
+        box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
     }
-    @keyframes blink { 50% { opacity: 0; } }
-    #status { font-size: 13px; color: #999; padding: 0 20px 6px; }
+    select {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: #fff;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 16px;
+    }
+    select:focus {
+        outline: none;
+        border-color: #4facfe;
+        box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+    }
+    .model-section { margin-bottom: 25px; }
+    button {
+        background: linear-gradient(90deg, #4facfe, #00f2fe);
+        color: white;
+        padding: 16px 32px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        display: block;
+        margin: 25px auto;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(79, 172, 254, 0.4);
+    }
+    button:active { transform: translateY(0); }
+    button:disabled {
+        background: #a0aec0;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    .result-section {
+        margin-top: 35px;
+        animation: fadeIn 0.5s ease;
+    }
+    .result-section h3 {
+        color: #2d3748;
+        margin-bottom: 15px;
+        font-weight: 500;
+        font-size: 20px;
+    }
+    .response {
+        background: #f7fafc;
+        border-left: 4px solid #4facfe;
+        padding: 20px;
+        margin-top: 15px;
+        border-radius: 0 12px 12px 0;
+        line-height: 1.6;
+        color: #2d3748;
+        animation: slideIn 0.3s ease;
+    }
+    /* 添加Markdown样式 */
+    .response.markdown-content {
+        background: white;
+        border-left: 4px solid #4facfe;
+        padding: 20px;
+        border-radius: 0 12px 12px 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    .response.markdown-content h1, .response.markdown-content h2, .response.markdown-content h3 { margin: 1em 0 0.5em 0; color: #2d3748; }
+    .response.markdown-content p { margin: 0.8em 0; line-height: 1.6; }
+    .response.markdown-content ul, .response.markdown-content ol { margin: 0.8em 0; padding-left: 1.5em; }
+    .response.markdown-content li { margin: 0.3em 0; }
+    .response.markdown-content code {
+        background-color: #f1f3f4;
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.9em;
+    }
+    .response.markdown-content pre {
+        background-color: #f8f9fa;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
+        overflow-x: auto;
+        margin: 1em 0;
+    }
+    .response.markdown-content pre code { background: none; padding: 0; }
+    .response.markdown-content blockquote {
+        border-left: 4px solid #dfe2e5;
+        padding-left: 16px;
+        margin: 1em 0;
+        color: #6a737d;
+    }
+    .response.markdown-content a { color: #4facfe; text-decoration: none; }
+    .response.markdown-content a:hover { text-decoration: underline; }
+    .response.markdown-content table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .response.markdown-content th, .response.markdown-content td { border: 1px solid #dfe2e5; padding: 8px 12px; text-align: left; }
+    .response.markdown-content th { background-color: #f8f9fa; font-weight: 600; }
+
+    .loading {
+        text-align: center;
+        color: #718096;
+        padding: 20px;
+        font-size: 16px;
+    }
+    .loading::after {
+        content: "";
+        animation: dots 1.5s infinite;
+    }
+    .error {
+        color: #e53e3e;
+        background-color: #fed7d7;
+        border-left-color: #e53e3e;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes dots {
+        0%, 20% { content: "."; }
+        40% { content: ".."; }
+        60%, 100% { content: "..."; }
+    }
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .container { padding: 25px; margin: 10px; }
+        h1 { font-size: 24px; }
+        textarea { height: 120px; }
+    }
+    /* 添加一些装饰元素 */
+    .container::before {
+        content: "";
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
+    }
+    .container::after {
+        content: "";
+        position: absolute;
+        bottom: -30px;
+        left: -30px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(79, 172, 254, 0.05), rgba(0, 242, 254, 0.05));
+    }
+    /* 版本提示样式 */
+    .version-tag {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        z-index: 1000;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
 </style>
 </head>
 <body>
+    <!-- 添加版本提示 -->
+    <div class="version-tag" id="version-tag">v1.0.0</div>
+    <div class="container">
+        <h1>🤖 AI模型</h1>
+        <div class="model-section">
+            <label for="model-select">🧠 选择 AI 模型:</label>
+            <select id="model-select">
+                <option value="LongCat-Flash-Chat">LongCat-Flash-Chat (平衡)</option>
+                <option value="LongCat-Flash-Lite" selected>LongCat-Flash-Lite (默认)</option>
+                <option value="LongCat-Flash-Thinking">LongCat-Flash-Thinking (有创造力)</option>
+                <option value="LongCat-Flash-Thinking-2601">LongCat-Flash-Thinking-2601 (新版)</option>
+                <option value="PaddlePaddle/PaddleOCR-VL-1.5">PaddleOCR-VL-1.5 (支持图像)</option>
+            </select>
+        </div>
+        <!-- 添加图像输入区域 -->
+        <div class="input-section" id="image-section" style="display: none;">
+            <label for="image-input">🖼️ 上传图像 (可选):</label>
+            <input type="file" id="image-input" accept="image/*" style="margin-bottom: 10px;">
+            <div id="image-preview" style="margin-top: 10px;"></div>
+        </div>
+        <div class="input-section">
+            <label for="prompt">📝 输入您的问题或指令:</label>
+            <textarea id="prompt" placeholder="例如：请帮我写一首关于春天的诗..."></textarea>
+        </div>
+        <button id="submit-btn" onclick="callAI()">
+            <span>🚀 发送</span>
+        </button>
+        <div class="result-section">
+            <h3>💬 AI 回复:</h3>
+            <div id="response" class="response" style="display: none;"></div>
+            <div id="loading" class="loading" style="display: none;">正在获取AI回复</div>
+        </div>
+    </div>
 
-<header>
-    <h1>🤖 AI 对话助手</h1>
-    <div>
-        <button class="btn btn-danger" onclick="clearChat()">清空对话</button>
-        <button class="btn btn-gray" onclick="toggleSettings()">⚙️ 设置</button>
-    </div>
-</header>
+<script>
+// ================== 配置区域 ==================
 
-<div id="settingsPanel">
-    <div class="form-row">
-        <div class="form-group">
-            <label>Base URL（API 地址）</label>
-            <input id="baseUrl" placeholder="https://api.openai.com/v1">
-        </div>
-        <div class="form-group">
-            <label>API Key</label>
-            <input id="apiKey" type="password" placeholder="sk-...">
-        </div>
-        <div class="form-group">
-            <label>模型名称</label>
-            <input id="modelName" placeholder="gpt-4o-mini">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>系统提示词（System Prompt）</label>
-            <textarea id="systemPrompt" rows="2" placeholder="你是一个有帮助的助手..."></textarea>
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group" style="max-width:200px">
-            <label>Temperat
+// API 提供商配置
+// 在此处添加或修改您的 API 服务
+const API_PROVIDERS = {
+    longcat: {
+        baseUrl: 'https://api.longcat.chat/openai/v1',
+        apiKey: "ak_2bG1gA4342JD8it0xL6Tr11G8TQ4j"
+    },
+    siliconflow: {
+        baseUrl: 'https://api.siliconflow.cn/v1',
+        apiKey: "sk-tzyunnxpemyjoxxwgwynhpopwofaupijtmkrvrmkrvmdrzin"
+    },
+    kevinllm: {
+        baseUrl: 'https://gateway.kevinllm.v6.army',
+        apiKey: "sk-MkK0jIWYozqpC19mqo6hzZ91FRcmadxJmq71hQ3skhGi72ku"
+    }
+};
+
+// 版本信息
+const VERSION = "v1.0.1";
+
+// 模型配置
+const MODEL_CONFIGS = {
+    "LongCat-Flash-Chat": { max_tokens: 5000, temperature: 0.7, apiProvider: "longcat" },
+    "LongCat-Flash-Lite": { max_tokens: 10000, temperature: 0.5, apiProvider: "longcat" },
+    "LongCat-Flash-Thinking": { max_tokens: 8000, temperature: 0.9, apiProvider: "longcat" },
+    "LongCat-Flash-Thinking-2601": { max_tokens: 8000, temperature: 0.3, apiProvider: "longcat" },
+    "PaddlePaddle/PaddleOCR-VL-1.5": { max_tokens: 4096, temperature: 0.7, supportImage: true, apiProvider: "siliconflow" }
+};
+
+// ================== 脚本逻辑 ==================
+
+let currentModel = "LongCat-Flash-Lite";
+let currentImageBase64 = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('version-tag').textContent = VERSION;
+
+    document.getElementById('image-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                currentImageBase64 = event.target.result;
+                document.getElementById('image-preview').innerHTML = `<img src="${currentImageBase64}" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 2px solid #4facfe;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+});
+
+async function callAI() {
+    const prompt = document.getElementById('prompt').value;
+    const responseDiv = document.getElementById('response');
+    const loadingDiv = document.getElementById('loading');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (!prompt.trim()) {
+        alert('请输入问题或指令');
+        return;
+    }
+
+    const modelConfig = MODEL_CONFIGS[currentModel];
+    const apiConfig = API_PROVIDERS[modelConfig.apiProvider];
+
+    if (!apiConfig) {
+        responseDiv.innerHTML = `❌ 错误: 未找到模型 "${currentModel}" 对应的 API 配置。`;
+        responseDiv.classList.add('error');
+        responseDiv.style.display = 'block';
+        loadingDiv.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>🚀 发送</span>';
+        return;
+    }
+
+    const imageSection = document.getElementById('image-section');
+    if (modelConfig.supportImage) {
+        imageSection.style.display = 'block';
+    } else {
+        imageSection.style.display = 'none';
+        currentImageBase64 = null;
+        document.getElementById('image-preview').innerHTML = '';
+    }
+
+    responseDiv.style.display = 'none';
+    loadingDiv.style.display = 'block';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳ 处理中...</span>';
+
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+        try {
+            const apiUrl = `${apiConfig.baseUrl}/chat/completions`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            };
+
+            let requestBody;
+            if (modelConfig.apiProvider === "siliconflow" && currentImageBase64) {
+                requestBody = {
+                    "model": currentModel,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                { "type": "text", "text": prompt },
+                                { "type": "image_url", "image_url": { "url": currentImageBase64 } }
+                            ]
+                        }
+                    ],
+                    "max_tokens": modelConfig.max_tokens,
+                    "temperature": modelConfig.temperature
+                };
+            } else {
+                requestBody = {
+                    model: currentModel,
+                    messages: [ { role: "user", content: prompt } ],
+                    max_tokens: modelConfig.max_tokens,
+                    temperature: modelConfig.temperature
+                };
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const markdownContent = data.choices[0].message.content;
+                const htmlContent = marked.parse(markdownContent);
+                responseDiv.innerHTML = `<strong>使用的模型: ${currentModel}</strong><br><br><div class="markdown-content">${htmlContent}</div>`;
+                responseDiv.classList.remove('error');
+                break;
+            } else if (response.status === 429) {
+                retryCount++;
+                console.warn(`收到429错误，第${retryCount}次重试`);
+                if (retryCount < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, 100
