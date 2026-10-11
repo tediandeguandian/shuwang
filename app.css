@@ -13,7 +13,7 @@
   --card-bg:rgba(255,255,255,.05);
   --card-br:rgba(201,169,97,.25);
   --radius:18px;
-  --shadow:0 8px 32px rgba(0,0,0,.35);
+  --shadow:0 6px 20px rgba(0,0,0,.30);
   --font-serif:"Noto Serif SC","Songti SC","STSong","Source Han Serif SC",serif;
   --font-sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",sans-serif;
   --font-mono:"SF Mono",Menlo,Consolas,"Courier New",monospace;
@@ -34,9 +34,17 @@ body{
 /* ---------- 背景装饰层（不可交互，透明度极低，不干扰阅读） ---------- */
 .bg-layer{position:fixed;inset:0;pointer-events:none;z-index:0}
 .bg-bamboo{opacity:.08}
+/* 宣纸颗粒：以前用的是 SVG feTurbulence 分形噪声滤镜铺满整屏 —— 那是 Chrome 里
+   最贵的滤镜之一，滚动时会拖帧。换成等价的纯 CSS 点阵，观感几乎一样，
+   但只是普通渐变，GPU 直接用现成的图层，不重新光栅化。 */
 .bg-paper{
   opacity:.05;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* 两套错开的点阵叠在一起，避免出现规则的「网点感」，更像纸的颗粒 */
+  background-image:
+    radial-gradient(rgba(255,255,255,.9) .5px, transparent .6px),
+    radial-gradient(rgba(255,255,255,.55) .4px, transparent .5px);
+  background-size:5px 5px, 7px 7px;
+  background-position:0 0, 2px 3px;
 }
 .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 16px}
 
@@ -71,10 +79,13 @@ body{
 
 /* ---------- 通用组件 ---------- */
 .card{
+  /* 这里以前有 backdrop-filter:blur(12px) 做毛玻璃。整页十几张卡片都开模糊，
+     Chrome 每帧都要重新采样背景再算一次模糊，是这台页面上最重的一笔开销。
+     背景本来就是接近纯色的深色渐变，模糊与不模糊肉眼几乎分不出来，
+     所以换成「半透明底色 + 一道内高光」，玻璃感还在，开销几乎归零。 */
   background:var(--card-bg);
-  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.045);
   border:1px solid var(--card-br);border-radius:var(--radius);
-  box-shadow:var(--shadow);
   padding:18px;margin-bottom:16px;
   transition:transform .25s ease,border-color .25s ease;
 }
@@ -174,7 +185,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 .weekbox .d{
   flex:1;text-align:center;padding:7px 0;border-radius:8px;font-size:12px;
   border:1px solid rgba(255,255,255,.12);color:var(--muted);background:rgba(0,0,0,.2);
-  transition:all .3s;
+  transition:background .3s,border-color .3s,color .3s,box-shadow .3s;
 }
 .weekbox .d.lit{border-color:var(--bamboo);color:#DCF0CB;background:rgba(127,176,105,.22);box-shadow:0 0 12px rgba(127,176,105,.25)}
 .weekbox .d.today{outline:1px dashed var(--gold);outline-offset:2px}
@@ -203,7 +214,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
   flex:0 0 22px;width:22px;height:22px;margin-top:2px;cursor:pointer;
   border-radius:6px;border:1.5px solid rgba(201,169,97,.5);
   display:flex;align-items:center;justify-content:center;
-  color:transparent;background:rgba(0,0,0,.25);transition:all .2s;
+  color:transparent;background:rgba(0,0,0,.25);transition:background .2s,border-color .2s,color .2s;
 }
 .check:hover{border-color:var(--bamboo)}
 .task.done .check{background:var(--bamboo);border-color:var(--bamboo);color:#0E2419}
@@ -235,8 +246,10 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 #tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:30;
   display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  background:rgba(11,30,21,.86);
-  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  /* 原来这里是半透明 + backdrop-filter:blur(14px)，而且是吸顶/吸底的，
+     滚动时每一帧都要把背后的内容重新模糊一次 —— 改成高不透明度底色，
+     看起来一样，滚动时不再有逐帧成本。 */
+  background:rgba(11,30,21,.95);
   border-top:1px solid var(--card-br);
 }
 .tab{
@@ -251,8 +264,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 
 /* ---------- 弹窗 ---------- */
 #modal-root:empty{display:none}
-.backdrop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+.backdrop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.68);
   display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .modal{
@@ -337,7 +349,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
   #tabbar{
     position:sticky;bottom:auto;top:0;left:auto;right:auto;
     max-width:1080px;margin:0 auto 4px;border:1px solid var(--card-br);border-top:none;
-    border-radius:0 0 var(--radius) var(--radius);background:rgba(11,30,21,.7);
+    border-radius:0 0 var(--radius) var(--radius);background:rgba(11,30,21,.95);
   }
   .tab{flex-direction:row;gap:8px;font-size:13.5px;padding:8px}
 }
@@ -368,3 +380,17 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 
 /* 「家长后台」角标：只在 admin 模式显示 */
 
+
+/* ---------- 「测试连通性」的结果面板 ---------- */
+.diag{
+  margin:10px 0 4px;padding:11px 13px;border-radius:12px;
+  background:rgba(0,0,0,.28);border:1px solid var(--card-br);
+  font-size:12.5px;line-height:1.85;color:var(--muted);
+  word-break:break-all;white-space:pre-wrap;
+}
+.diag .diag-h{font-weight:600;letter-spacing:.5px;margin-bottom:5px}
+.diag.ok{border-color:rgba(127,176,105,.55)}
+.diag.ok .diag-h{color:var(--bamboo)}
+.diag.bad{border-color:rgba(193,68,46,.55)}
+.diag.bad .diag-h{color:#E8A79B}
+.diag code{font-family:var(--font-mono);font-size:12px}

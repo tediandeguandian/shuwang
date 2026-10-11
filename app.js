@@ -81,9 +81,13 @@ const CONFIG = {
   // ---- 存储键名前缀（改这里会导致读不到旧数据，一般不要动）----
   storagePrefix: 'wuxia_study_',
   // ---- 云同步后端地址 ----
-  // 把 Cloudflare Worker 部署好之后，把它的地址填在这里（例：https://study-xxx.workers.dev）。
   // 留空 = 纯离线模式，数据只存在本机浏览器。手机上也可以在「同步」弹窗里现填。
-  cloudApi: 'https://study.2469624514.workers.dev',
+  //
+  // 【千万不要用 xxx.workers.dev】—— 这个域名在国内被 DNS 污染，
+  // 五个 DNS 会返回五个互不相同的假 IP（Facebook / Twitter / Dropbox 的段），
+  // 浏览器只会报「连不上」。必须给 Worker 绑一个自己域名下的地址。
+  // 绑法见《部署说明-云同步.md》第九节。
+  cloudApi: 'https://study.shuwang.dpdns.org',
 };
 
 /* ================================================================
@@ -1474,6 +1478,8 @@ document.addEventListener('click', function(e){
     case 'cloud-push': cloudPush(); break;
     case 'cloud-logout': cloudLogout(); break;
     case 'cloud-undo': cloudUndo(); break;
+    case 'cloud-diag': cloudDiagnose(); break;
+    case 'cloud-change-api': cloudChangeApi(); break;
     case 'cloud-take-mine': CLOUD.takeMine(); break;
     case 'cloud-take-cloud': CLOUD.takeCloud(); break;
     case 'cloud-adopt-cloud': CLOUD.adoptCloud(); break;
@@ -1659,6 +1665,8 @@ const CLOUD = {
   conflictInfo: null,
   cloudSide: null,
   cloudSideRev: 0,
+  blockedApi: '',       // 被识别为「连不上」的地址（*.workers.dev），用来提示用户改
+  diag: null,           // 「测试连通性」的结果
 
   /* ---- 本机存储的小工具 ---- */
   k: n => CONFIG.storagePrefix + 'cloud_' + n,
@@ -1672,7 +1680,19 @@ const CLOUD = {
   get connected(){ return !!this.session; },
 
   init(){
-    this.api = String(this.read('api', '') || CONFIG.cloudApi || '').replace(/\/+$/, '');
+    const fallback = String(CONFIG.cloudApi || '').replace(/\/+$/, '');
+    let stored = String(this.read('api', '') || '').replace(/\/+$/, '');
+    // 本机如果存着 *.workers.dev 这种地址，直接丢掉换回出厂值。
+    // 这个域名在国内被 DNS 污染（各 DNS 返回随机假 IP），前端只会报「连不上」，
+    // 用户对着一个"看起来没错"的地址能卡很久。
+    this.blockedApi = '';
+    if(isBlockedApi(stored)){
+      this.blockedApi = stored;
+      this.drop('api'); this.drop('session');
+      stored = '';
+    }
+    this.api = stored || fallback;
+    if(isBlockedApi(this.api)) this.blockedApi = this.api;
     this.dirty = !!this.read('dirty', false);
     const c = this.read('session', null);
     if(c && c.session && c.api === this.api && (!c.exp || Date.now() < c.exp)){
@@ -1690,11 +1710,23 @@ const CLOUD = {
     const headers = Object.assign({}, opts.headers || {});
     if(this.session) headers.Authorization = 'Bearer ' + this.session;
     if(opts.body !== undefined) headers['Content-Type'] = 'application/json';
-    const res = await fetch(this.api + path, {
-      method: opts.method || 'GET',
-      headers: headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body)
-    });
+    let res;
+    try{
+      res = await fetch(this.api + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        cache: 'no-store'
+      });
+    }catch(netErr){
+      // 连响应都拿不到：网络不通 / 域名被挡 / 地址写错。
+      // 单独抛一个带标记的错误，好让上层说人话，而不是甩一句 "Failed to fetch"。
+      const e = new Error(isBlockedApi(this.api)
+        ? '连不上：xxx.workers.dev 在国内被 DNS 污染，得换成自己域名下的地址'
+        : ('连不上后端：' + this.api + '（网络不通，或这个域名在你的网络里被挡了）'));
+      e.network = true;
+      throw e;
+    }
     let data = null;
     try{ data = await res.json(); }catch(e){ /* 有些错误响应没有 body */ }
     if(!res.ok){
@@ -1761,7 +1793,8 @@ const CLOUD = {
 
   /* ---- 上传（整份推送，推之前先合并） ---- */
   async push(){
-    if(!this.connected) return;
+    // 没连上就直接说清楚，不要留着「同步中」让那个小圆点一直闪
+    if(!this.connected){ this.setStatus('off', this.api ? '还没连接' : '未配置云同步'); return; }
     if(this.busy){ this.schedulePush(); return; }
     this.busy = true;
     this.setStatus('syncing', '正在同步…');
@@ -1811,6 +1844,7 @@ const CLOUD = {
     this.schedulePush();
   },
   schedulePush(){
+    if(!this.api || !this.connected) return;   // 没连上就别摆出「同步中」的样子
     clearTimeout(this.pushTimer);
     this.setStatus('syncing', '等待上传…');
     this.pushTimer = setTimeout(() => this.push(), 1000);
@@ -1895,6 +1929,14 @@ const CLOUD = {
 /* ---------------- 下面几个是纯粹的小工具 ---------------- */
 
 function deepCopy(x){ return JSON.parse(JSON.stringify(x)); }
+
+/** *.workers.dev 在国内被 DNS 污染：问五个 DNS 会得到五个互不相同的假 IP
+    （Facebook / Twitter / Dropbox 的段），浏览器只会报「连不上」。
+    踩过一次，所以这里做静态识别，见到就直接提示换地址，不让用户干耗。 */
+function isBlockedApi(u){
+  return /^(https?:\/\/)?[^/\s]*\.workers\.dev([/:]|$)/i.test(String(u || '').trim());
+}
+
 /** 正在输入框里打字？那就先别重渲染，免得把人家写了一半的字冲掉 */
 function isTypingNow(){
   const ae = document.activeElement;
@@ -1987,6 +2029,18 @@ function openCloudPanel(){
 
   body += '<div class="cloud-state"><span class="dot ' + dotCls + '"></span>' +
     '<b>' + esc(c.msg || c.shortText()) + '</b></div>';
+
+  // 地址是被污染的那种：先把话说透，不然用户会一直重试下去
+  if(isBlockedApi(c.api) || c.blockedApi){
+    const bad = c.api && isBlockedApi(c.api) ? c.api : c.blockedApi;
+    body += '<div class="sealed">' + ICON.warn + ' <span>后端地址是 <code>' + esc(bad) +
+      '</code> —— <b>xxx.workers.dev 在国内被 DNS 污染，浏览器永远连不上。</b></span></div>' +
+      '<div class="hint">这跟口令、跟代码都没关系，是网络层就断了。' +
+      '解法是给这个 Worker 绑一个自己域名下的地址：' +
+      'Cloudflare 后台 → 该 Worker → Settings → Domains &amp; Routes → Add → Custom Domain，' +
+      '填一个像 <code>study.你的域名</code> 的地址，然后把新地址填到下面。</div>';
+  }
+
   body += '<div class="hint">' +
     (c.connected ? '已连接你的云端' : '还没连接') +
     (c.connected && c.updatedAt ? '<br>云端最后更新：' + esc(c.updatedAt) + '（版本号 ' + esc(String(c.rev)) + '）' : '') +
@@ -1994,13 +2048,22 @@ function openCloudPanel(){
     (c.api ? '<br>后端：<code>' + esc(c.api) + '</code>' : '') +
     '</div>';
 
+  // 「测试连通性」的结果
+  if(c.diag){
+    body += '<div class="diag ' + (c.diag.ok ? 'ok' : 'bad') + '">' +
+      '<div class="diag-h">' + (c.diag.ok ? '连通性测试：通过' : '连通性测试：没通') + '</div>' +
+      c.diag.lines.map(x => '<div>' + esc(x) + '</div>').join('') + '</div>';
+  }
+
   if(!c.connected){
     body +=
       '<div class="cfg-sec"><b>连接云端</b><span class="t-line"></span></div>' +
-      fields.input('cloudApi', '后端地址（Cloudflare Worker）', c.api, 'text', 'placeholder="https://study-xxxx.workers.dev"') +
+      fields.input('cloudApi', '后端地址（不要用 *.workers.dev）', c.api, 'text', 'placeholder="https://study.你的域名"') +
       fields.input('cloudToken', '同步口令', '', 'password', 'placeholder="SYNC_TOKEN"') +
       '<div class="hint">口令就是你在 Cloudflare Worker 里设的那个变量。' +
-      '连上之后不用再输，换台设备才要重输一次。</div>';
+      '连上之后不用再输，换台设备才要重输一次。</div>' +
+      '<div class="row"><button type="button" class="btn" data-action="cloud-diag">' +
+        ICON.cloud + ' 先测一下这个地址通不通</button></div>';
     openModal('云同步', body, '连接', async fd => {
       const api = String(fd.get('cloudApi') || '').trim();
       const token = String(fd.get('cloudToken') || '');
@@ -2028,6 +2091,8 @@ function openCloudPanel(){
     '<button type="button" class="btn" data-action="cloud-pull">' + ICON.down + ' 拉取云端（覆盖本机）</button>',
     '<button type="button" class="btn" data-action="cloud-push">' + ICON.up + ' 上传本机数据（覆盖云端）</button>',
     '<button type="button" class="btn" data-action="cloud-undo">' + ICON.history + ' 撤销上一次云端保存</button>',
+    '<button type="button" class="btn" data-action="cloud-diag">' + ICON.cloud + ' 测试后端连通性</button>',
+    '<button type="button" class="btn" data-action="cloud-change-api">' + ICON.link + ' 换个后端地址</button>',
     '<button type="button" class="btn" data-action="cloud-logout">' + ICON.unlink + ' 断开连接</button>'
   ];
   body += '<div class="row" style="margin-top:6px">' + btns.join('') + '</div>';
@@ -2100,6 +2165,79 @@ async function cloudUndo(){
 function cloudLogout(){
   CLOUD.logout(); closeModal();
   toast('已断开云同步，本机数据还在');
+}
+
+/** 换后端地址（常见于从 workers.dev 迁到自己域名）。断开只清会话，不清本机数据。 */
+function cloudChangeApi(){
+  CLOUD.logout();
+  CLOUD.diag = null;
+  openCloudPanel();
+}
+
+/** 把「连不上」拆成「到底哪一步断了」——域名不通 / 后端没起 / 配置不全 / 口令不对，
+    四种原因的修法完全不同，让用户对着界面猜太亏。 */
+async function cloudDiagnose(){
+  const lines = [];
+  // 面板上填了新地址就先按新的测，不然用户改完地址点「测试」测的还是旧的
+  const field = $('[name="cloudApi"]');
+  if(field && String(field.value || '').trim()) {
+    CLOUD.api = String(field.value).trim().replace(/\/+$/, '');
+  }
+  const api = CLOUD.api;
+  lines.push('后端地址：' + (api || '（空的）'));
+
+  if(!api){
+    lines.push('→ 地址是空的。先在下面把 Worker 地址填上。');
+    return showDiag(false, lines);
+  }
+  if(isBlockedApi(api)){
+    lines.push('→ 这个地址是 *.workers.dev。它在国内被 DNS 污染（不同 DNS 会返回不同的假 IP），'
+      + '浏览器在 DNS 这一步就失败了，跟口令、跟代码都没关系。');
+    lines.push('   先按上面的提示换成自己域名下的地址，再来测。');
+    return showDiag(false, lines);
+  }
+
+  lines.push('正在请求 ' + api + '/api/health …');
+  const t0 = Date.now();
+  let res;
+  try{
+    const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 8000) : null;
+    try{
+      res = await fetch(api + '/api/health', { cache:'no-store', signal: ctl ? ctl.signal : undefined });
+    }finally{
+      if(timer) clearTimeout(timer);
+    }
+  }catch(netErr){
+    lines.push('请求失败：' + (netErr && netErr.name === 'AbortError'
+      ? '8 秒没有任何响应（超时）' : ((netErr && netErr.message) || String(netErr))));
+    lines.push('→ 网络层就断了。多半是这个域名在你这里被挡，或者地址打错了。');
+    return showDiag(false, lines);
+  }
+
+  lines.push('HTTP ' + res.status + '，用了 ' + (Date.now() - t0) + ' ms');
+  const txt = await res.text();
+  let data = null;
+  try{ data = JSON.parse(txt); }catch(e){ /* 不是 JSON 就按文本看 */ }
+
+  if(data && (data.ok || data.error)){
+    lines.push('后端原话：' + txt.slice(0, 220));
+    if(data.error){
+      lines.push('→ 后端已经跑起来了，但还没配齐。照着上面这句话去 Worker 的 Settings 里补。');
+      return showDiag(false, lines);
+    }
+    lines.push('→ 通了。云端' + (data.hasData ? ('已有数据，版本号 ' + data.rev) : '还没有数据')
+      + (data.hasPrev ? '，可以撤回一次' : '') + '。');
+    return showDiag(true, lines);
+  }
+
+  lines.push('返回的不是我们认识的 JSON：' + txt.slice(0, 140));
+  lines.push('→ 这个地址上跑的可能不是这份 worker.js（比如还是 Cloudflare 默认的 Hello World）。');
+  return showDiag(false, lines);
+}
+function showDiag(ok, lines){
+  CLOUD.diag = { ok: !!ok, lines: lines };
+  openCloudPanel();
 }
 
 /* ================================================================
