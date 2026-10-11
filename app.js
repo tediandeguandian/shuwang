@@ -20,7 +20,7 @@ const CONFIG = {
   // ---- 基础文案 ----
   appTitle: '竹林修行录',            // 页面大标题（左上角 + 浏览器标签）
   gradeLabel: '九年级',             // 副标题前缀
-  studentName: '罗小川',
+  studentName: '鼠王',
   examDate: '2027-06-13',          // 中考开考日
   // ---- 四个页面的名字 ----
   pageNames: { home:'总览', study:'习文', furnace:'炼丹炉', record:'战绩' },
@@ -83,7 +83,7 @@ const CONFIG = {
   // ---- 云同步后端地址 ----
   // 把 Cloudflare Worker 部署好之后，把它的地址填在这里（例：https://study-xxx.workers.dev）。
   // 留空 = 纯离线模式，数据只存在本机浏览器。手机上也可以在「同步」弹窗里现填。
-  cloudApi: '',
+  cloudApi: 'study.2469624514.workers.dev',
 };
 
 /* ================================================================
