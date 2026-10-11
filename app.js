@@ -83,7 +83,7 @@ const CONFIG = {
   // ---- 云同步后端地址 ----
   // 把 Cloudflare Worker 部署好之后，把它的地址填在这里（例：https://study-xxx.workers.dev）。
   // 留空 = 纯离线模式，数据只存在本机浏览器。手机上也可以在「同步」弹窗里现填。
-  cloudApi: 'study.2469624514.workers.dev',
+  cloudApi: 'https://study.2469624514.workers.dev',
 };
 
 /* ================================================================
