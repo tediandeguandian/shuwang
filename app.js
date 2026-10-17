@@ -219,6 +219,10 @@ function applyTheme(theme){
 
   const light = luma(t.bg1) > 0.45;
   root.style.setProperty('--light', light ? '1' : '0');
+  // 浏览器自带的那套 UI —— 滚动条、下拉箭头、复选框勾、日期选择器 —— 也跟着明暗走。
+  // index.html 里那个 <meta name="color-scheme"> 只兜首屏，真正的依据是这里；
+  // 不设的话，浅色主题下滚动条会按「深色」画成一条黑底。
+  root.style.setProperty('color-scheme', light ? 'light' : 'dark');
   // 液态玻璃：整段效果靠 body.glass 这个类开关，CSS 里只在这一类下用 backdrop-filter
   if (document.body) document.body.classList.toggle('glass', !!CFG.glass);
   // 压在主强调色上的文字：强调色本身亮就用深字，暗就用白字
@@ -248,11 +252,22 @@ function applyTheme(theme){
   root.style.setProperty('--glass-sh',  light ? '0 10px 34px rgba(30,60,100,.16)' : '0 10px 34px rgba(0,0,0,.45)');
 }
 
-/** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。 */
-function previewTheme(t){ applyTheme(t); }
+/** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。
+    图表颜色是直接画进 SVG 属性里的（不读 CSS 变量），所以要把 CFG.theme
+    临时换过去重画一遍、画完立刻换回来 —— 否则点主题卡片时，除了图表全都变色了。 */
+function previewTheme(t){
+  const old = CFG.theme;
+  CFG.theme = t;
+  applyTheme(t);
+  try{ drawCharts(); }catch(e){ /* 页面还没渲染时没有图表，忽略 */ }
+  CFG.theme = old;
+}
 
 /** 还原成当前配置里的主题 */
-function clearThemePreview(){ applyTheme(); }
+function clearThemePreview(){
+  applyTheme();
+  try{ drawCharts(); }catch(e){ /* 同上 */ }
+}
 
 /** 标题、页签文字等静态文案 */
 function applyStaticText(){
@@ -708,7 +723,7 @@ function drawLine(el, cfg){
   // 网格与 Y 轴刻度
   for(let i = 0; i <= 4; i++){
     const v = min + (max - min) * i / 4, yy = y(v);
-    s += '<line x1="'+pL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pR)+'" y2="'+yy.toFixed(1)+'" stroke="rgba(255,255,255,.08)" stroke-width="1"/>';
+    s += '<line x1="'+pL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pR)+'" y2="'+yy.toFixed(1)+'" stroke="'+CFG.theme.jade+'" stroke-opacity=".12" stroke-width="1"/>';
     s += '<text x="'+(pL-8)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="'+CFG.theme.muted+'" font-family="monospace">'+Math.round(v)+'</text>';
   }
   // 每条序列
@@ -757,7 +772,7 @@ function drawBars(el, cfg){
   let s = '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">';
   for(let i = 0; i <= 3; i++){
     const v = nice * i / 3, yy = pT + ih - ih * i / 3;
-    s += '<line x1="'+pL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pR)+'" y2="'+yy.toFixed(1)+'" stroke="rgba(255,255,255,.08)"/>';
+    s += '<line x1="'+pL+'" y1="'+yy.toFixed(1)+'" x2="'+(W-pR)+'" y2="'+yy.toFixed(1)+'" stroke="'+CFG.theme.jade+'" stroke-opacity=".12" stroke-width="1"/>';
     s += '<text x="'+(pL-7)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="'+CFG.theme.muted+'" font-family="monospace">'+Math.round(v)+'</text>';
   }
   vals.forEach((v, i) => {
@@ -777,7 +792,7 @@ function ringSVG(percent, size){
   size = size || 150;
   const r = 50, c = 2 * Math.PI * r, off = c * (1 - clamp(percent, 0, 100) / 100);
   return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 120 120">' +
-    '<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="10"/>' +
+    '<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="'+CFG.theme.jade+'" stroke-opacity=".14" stroke-width="10"/>' +
     '<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="'+CFG.theme.bamboo+'" stroke-width="10" stroke-linecap="round" ' +
       'stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 60 60)"/>' +
     '<text x="60" y="66" text-anchor="middle" font-size="26" fill="'+CFG.theme.bamboo+'" font-family="monospace" font-weight="700">'+percent+'%</text>' +
@@ -843,7 +858,7 @@ function renderHome(){
 
   chartDefs['home-trend'] = () => ({
     type: 'line',
-    cfg: { height: 230, series: [{ name:'总分', color:'#7FB069', values: exams.map(e => Calc.examTotal(e)) }],
+    cfg: { height: 230, series: [{ name:'总分', color: CFG.theme.bamboo, values: exams.map(e => Calc.examTotal(e)) }],
            labels: exams.map(e => e.name.length > 6 ? e.name.slice(0,6) : e.name) }
   });
 
@@ -1035,7 +1050,7 @@ function renderRecord(){
       <div class="sumrow">\
         <span class="ico">'+subjIcon(r.subject,18)+'</span>\
         <span class="nm">'+esc(r.subject)+'</span>\
-        <span class="bar thin"><i style="width:'+r.rate+'%;background:linear-gradient(90deg,'+(r.rate<60?CFG.theme.cinnabar:'#5E9450')+','+(r.rate<60?CFG.theme.cinnabar:CFG.theme.bamboo)+')"></i></span>\
+        <span class="bar thin"><i style="width:'+r.rate+'%;background:linear-gradient(90deg,var(--'+(r.rate<60?'cinnabar-70':'bamboo-70')+'),var(--'+(r.rate<60?'cinnabar':'bamboo')+'))"></i></span>\
         <span class="val">'+r.rate+'%</span>\
       </div>').join('') : '<div class="empty">先在下面录一次考试成绩</div>') + '\
   </div>\

@@ -85,6 +85,9 @@
   /* ---- 与主题无关的 ---- */
   --radius:18px;
   --shadow:0 6px 20px rgba(0,0,0,.30);
+  /* 浏览器自带 UI 的明暗。applyTheme 会按当前主题改写成 light / dark，
+     不改的话浅色主题下滚动条会被画成「深色」—— 一条黑底 */
+  color-scheme:dark;
   --font-serif:"Noto Serif SC","Songti SC","STSong","Source Han Serif SC",serif;
   --font-sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",sans-serif;
   --font-mono:"SF Mono",Menlo,Consolas,"Courier New",monospace;
@@ -609,4 +612,49 @@ body.glass .check{
 body.glass .task.done .check{
   background:var(--bamboo);
   color:var(--on-accent);
+}
+
+/* ==========================================================
+   滚动条
+
+   之前一条样式都没写，全靠浏览器默认。而默认滚动条的颜色由
+   color-scheme 决定 —— 早先 index.html 里写死 content="dark"，
+   于是浅色主题下右侧也画成一条黑底，很扎眼。
+
+   现在两边都管：
+     · color-scheme 由 applyTheme 按明暗改写（见上面 :root 的注释）
+     · 滚动条本身用主题色，滑块透明底 + 药丸圆角，深浅都不突兀
+   ========================================================== */
+
+/* WebKit / Chromium：能分别画轨道和滑块 */
+::-webkit-scrollbar{
+  width:10px;
+  height:10px;
+}
+::-webkit-scrollbar-track{
+  background:transparent;
+}
+::-webkit-scrollbar-thumb{
+  background:var(--bamboo-34);
+  border-radius:999px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+}
+::-webkit-scrollbar-thumb:hover{
+  background:var(--bamboo-60);
+}
+::-webkit-scrollbar-thumb:active{
+  background:var(--bamboo-70);
+}
+::-webkit-scrollbar-corner{
+  background:transparent;
+}
+
+/* Firefox：只认 scrollbar-color / scrollbar-width，不认上面那些伪元素。
+   用 @supports 把它挡在外面，免得在 Chrome 121+ 上把 ::-webkit-scrollbar 顶掉。 */
+@supports not selector(::-webkit-scrollbar){
+  *{
+    scrollbar-width:thin;
+    scrollbar-color:var(--bamboo-45) transparent;
+  }
 }
