@@ -1487,11 +1487,41 @@ function sameTheme(a, b){
   return Object.keys(CONFIG.theme).every(k => String(a[k] || '').toLowerCase() === String(b[k] || '').toLowerCase());
 }
 
+/* 设置面板分五类。字段全在同一个 form 里，切分类只是显示/隐藏，
+   所以「保存设置」那条 FormData 逻辑完全不受影响。 */
+const SET_PANES = [
+  { k:'basic', t:'基本' },
+  { k:'learn', t:'学习' },
+  { k:'look',  t:'外观' },
+  { k:'sync',  t:'同步' },
+  { k:'data',  t:'数据' }
+];
+let settingsPane = 'basic';   // 记住上次看的是哪一类，下次打开接着看
+
+/** 切换设置里的分类 */
+function setSettingsPane(k){
+  if(!k) return;
+  settingsPane = k;
+  $$('.set-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
+  $$('.cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
+  const m = $('.modal');
+  if(m) m.scrollTop = 0;      // 换类之后从头看
+}
+
 function openSettings(){
   const s = Store.state.settings;
   const th = CFG.theme;
+  const cur = settingsPane;
   const body =
-    /* ---- 基础文案 ---- */
+    /* ---- 分类标签 ---- */
+    '<div class="set-tabs">' +
+      SET_PANES.map(p =>
+        '<button type="button" class="set-tab' + (p.k === cur ? ' on' : '') +
+        '" data-action="set-pane" data-pane="' + p.k + '">' + p.t + '</button>').join('') +
+    '</div>' +
+
+    /* ---- ① 基本：文案 + 三阶段 ---- */
+    '<div class="cfg-pane' + (cur === 'basic' ? ' on' : '') + '" data-pane="basic">' +
     '<div class="cfg-sec"><b>基础文案</b><span class="t-line"></span></div>' +
     '<div class="f-row">' +
       fields.input('appTitle','工作台标题', CFG.appTitle) +
@@ -1518,7 +1548,8 @@ function openSettings(){
         fields.input('stage_end_'+i,'结束', st.end, 'date') +
       '</div>').join('') +
 
-    /* ---- 学科 ---- */
+    /* ---- ② 学习：学科 / 标签 / 复习节奏 / 励志语 ---- */
+    '</div><div class="cfg-pane' + (cur === 'learn' ? ' on' : '') + '" data-pane="learn">' +
     '<div class="cfg-sec"><b>学科与满分</b><span class="t-line"></span></div>' +
     fields.textarea('subjects','一行一个学科，格式：学科|满分|图标',
       CFG.subjects.map(x => x + '|' + (CFG.fullMarks[x] || 100) + '|' + (CFG.subjIcons[x] || '')).join('\n'),
@@ -1545,7 +1576,8 @@ function openSettings(){
     '<div class="cfg-sec"><b>每日励志语</b><span class="t-line"></span></div>' +
     fields.textarea('mottos','一行一句，每天自动换一句', CFG.mottos.join('\n'), 'rows="6"') +
 
-    /* ---- 主题风格（成套换，下面还能单个微调） ---- */
+    /* ---- ③ 外观：主题风格 + 配色 ---- */
+    '</div><div class="cfg-pane' + (cur === 'look' ? ' on' : '') + '" data-pane="look">' +
     '<div class="cfg-sec"><b>主题风格</b><span class="t-line"></span></div>' +
     '<div class="themes">' +
       (CFG.themes || []).map((p, i) => {
@@ -1604,10 +1636,12 @@ function openSettings(){
       fields.color('theme_bg3','背景 下', th.bg3) +
     '</div>' +
 
-    /* ---- 云同步 ---- */
+    /* ---- ④ 同步 ---- */
+    '</div><div class="cfg-pane' + (cur === 'sync' ? ' on' : '') + '" data-pane="sync">' +
     cloudSectionHTML() +
 
-    /* ---- 数据管理 ---- */
+    /* ---- ⑤ 数据 ---- */
+    '</div><div class="cfg-pane' + (cur === 'data' ? ' on' : '') + '" data-pane="data">' +
     '<div class="cfg-sec"><b>数据管理</b><span class="t-line"></span></div>' +
     '<div class="row">' +
       '<button type="button" class="btn" data-action="export-json">'+ICON.down+' 导出 JSON 备份</button>' +
@@ -1616,7 +1650,8 @@ function openSettings(){
       '<button type="button" class="btn btn-danger" data-action="ask-clear">清空全部数据</button>' +
     '</div>' +
     '<div class="hint" style="margin-top:10px">「恢复默认设置」只重置上面这些设置项，不动你的任务、错题和成绩。<br>' +
-      '数据存在浏览器里，也同步到你自己的 Cloudflare 云端；换设备或清缓存前建议顺手导出一份备份。</div>';
+      '数据存在浏览器里，也同步到你自己的 Cloudflare 云端；换设备或清缓存前建议顺手导出一份备份。</div>' +
+    '</div>';   // 关掉「数据」这类
 
   openModal('设置', body, '保存设置', fd => {
     const st = Store.state.settings;
@@ -1843,6 +1878,7 @@ document.addEventListener('click', function(e){
     /* ---- 导航 ---- */
     case 'go': switchPage(el.dataset.page); break;
     case 'open-settings': openSettings(); break;
+    case 'set-pane': setSettingsPane(el.dataset.pane); break;
     case 'pick-theme': {
       // 注意传的是预设里的 .theme，不是整个预设对象；
       // 第二个参数是下标 —— 这套自己的背景图 / 名字要靠它取

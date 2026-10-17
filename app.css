@@ -242,6 +242,36 @@ textarea{min-height:80px;resize:vertical;line-height:1.7}
 .cfg-sec .t-line{flex:1;height:1px;background:linear-gradient(90deg,var(--card-br),transparent)}
 .hint{font-size:12px;color:var(--muted);line-height:1.75;margin:-4px 0 8px}
 .hint code{font-family:var(--font-mono);background:var(--panel);padding:1px 5px;border-radius:5px;color:var(--bamboo)}
+
+/* ---------- 设置面板的分类标签 ----------
+   设置项太多，一屏拉不到底。分成五类，点一下只显示这一类；
+   所有字段仍然在同一个 <form> 里（隐藏的也会被 FormData 收到），
+   所以「保存设置」的逻辑一行都不用改。 */
+.set-tabs{
+  position:sticky;top:-22px;z-index:6;
+  display:flex;gap:6px;overflow-x:auto;
+  /* 负外边距顶到弹窗边缘；padding-top 多留 22px 抵消 top:-22px，
+     这样吸顶时标签不会被裁掉，不吸顶时位置又刚好 */
+  margin:-22px -22px 16px;padding:34px 22px 12px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--card-br);
+  border-radius:var(--radius) var(--radius) 0 0;
+  -webkit-overflow-scrolling:touch;
+}
+.set-tabs::-webkit-scrollbar{display:none}
+.set-tab{
+  flex:0 0 auto;padding:6px 13px;border-radius:999px;cursor:pointer;
+  font-size:13px;letter-spacing:.5px;color:var(--muted);
+  background:transparent;border:1px solid transparent;
+  transition:color .18s,background .18s,border-color .18s;
+  font-family:var(--font-sans);
+}
+.set-tab:hover{color:var(--jade)}
+.set-tab.on{color:var(--bamboo);background:var(--bamboo-18);border-color:var(--bamboo-34)}
+.cfg-pane{display:none}
+.cfg-pane.on{display:block}
+/* 分类里的第一块不要顶着标签栏，留一点空 */
+.cfg-pane > .cfg-sec:first-child{margin-top:6px}
 input[type=color]{
   -webkit-appearance:none;appearance:none;padding:2px;height:38px;cursor:pointer;
   background:var(--panel);border:1px solid var(--card-br);border-radius:10px;
