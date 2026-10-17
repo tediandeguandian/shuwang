@@ -6,9 +6,25 @@
 <meta name="color-scheme" content="dark light">
 <meta name="robots" content="noindex,nofollow">
 <title>竹林修行录 · 中考学习工作台</title>
-<link rel="stylesheet" href="app.css?v=14">
+<link rel="stylesheet" href="app.css?v=15">
 </head>
 <body>
+
+<!-- ============ 液态玻璃的滤镜宿主 ============
+     · 必须真的在文档里（width/height:0 + overflow:hidden，**不能 display:none**，
+       否则 Chromium 认为滤镜不存在）
+     · #lg-default 是恒等兜底：JS 还没量到元素尺寸时，backdrop-filter 里那句
+       url() 也必须是合法值，否则整条声明失效、连模糊都没了
+     · app.js 会把按元素真实尺寸生成的 <filter> 塞进这个 <defs> -->
+<svg id="lg-defs" width="0" height="0" aria-hidden="true" focusable="false"
+     style="position:absolute;left:0;top:0;width:0;height:0;overflow:hidden">
+  <filter id="lg-default" x="0" y="0" width="100%" height="100%"
+          color-interpolation-filters="sRGB">
+    <feColorMatrix type="saturate" values="1"/>
+  </filter>
+  <!-- app.js 按元素尺寸生成的 <filter> 会塞进这里；清空重建时不会碰到上面那个兜底 -->
+  <defs id="lg-gen"></defs>
+</svg>
 
 <!-- ============ 背景装饰：水墨竹影 + 宣纸纹理（极低透明度，纯装饰） ============ -->
 <div class="bg-layer bg-bamboo" aria-hidden="true">
@@ -89,7 +105,7 @@
 <div id="toast"></div>
 
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 <script>boot();</script>
 </body>
 </html>

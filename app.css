@@ -85,6 +85,18 @@
   --glass-br:rgba(255,255,255,.72);
   --glass-hl:rgba(255,255,255,.90);
   --glass-sh:0 10px 34px rgba(30,60,100,.16);
+  /* 玻璃的几何/材质参数：模糊、饱和、边缘厚度、镜面、凹陷色、折射滤镜 */
+  --glass-blur:16px;
+  --glass-blur2:22px;
+  --glass-sat:180%;
+  --glass-edge:1px;
+  --glass-rim:rgba(255,255,255,.55);
+  --glass-hl2:rgba(255,255,255,.28);
+  --glass-sheen:rgba(255,255,255,.34);
+  --glass-glow:rgba(255,255,255,.30);
+  --glass-in:rgba(255,255,255,.04);
+  --glass-in-br:rgba(0,0,0,.10);
+  --glass-filter:url(#lg-default);
 
   /* ---- 与主题无关的 ---- */
   --radius:18px;
@@ -231,6 +243,11 @@ input,select,textarea{
   outline:none;transition:border-color .2s,background .2s;
 }
 input:focus,select:focus,textarea:focus{border-color:var(--bamboo);background:var(--panel-focus)}
+/* 基础样式把 outline 关了，键盘 Tab 走一遍就完全看不出焦点。
+   这里补一个只对键盘可见的环（鼠标点击不会触发 :focus-visible）。 */
+input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--bamboo-55);outline-offset:1px;
+}
 select option{background:var(--bg1);color:var(--jade)}
 textarea{min-height:80px;resize:vertical;line-height:1.7}
 .f-row{display:flex;gap:10px;flex-wrap:wrap}
@@ -614,17 +631,37 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 /* ==========================================================
    液态玻璃（只在 body.glass 下生效）
 
-   这是全站**唯一**用 backdrop-filter 的一段，是有意的：
-   玻璃质感就来自「实时采样背后的内容再模糊」，没有替代品。
-   代价也是真实的 —— Chrome 每帧都要重新采样 + 模糊，
-   十几张卡片加上吸底导航一起开，弱设备上会掉帧。
+   这是全站**唯一**用 backdrop-filter 的一段，是有意的。
 
-   所以它由「设置 → 液态玻璃效果」一个开关控制，用户自己选：
-   觉得卡就关掉，颜色一点不受影响。选「液态玻璃」那套预设时预置为开。
+   三层结构，从下往上：
+     Tier0  毛玻璃   blur() + saturate()      —— 所有浏览器都有，Safari/Firefox 停在这一档
+     Tier1  真折射   backdrop-filter 里追加 url(#lg-WxH) —— 只有 Chromium 渲染得出来
+     Tier2  镜面     纯 CSS 的 inset 亮边 + 斜向高光，不增加 GPU pass
+
+   Tier1 的开关是 body[data-lg="on"]，由 app.js 探到引擎、并且把滤镜塞进 DOM
+   之后才打开。**绝对不能用 @supports 判断**：Safari 会把 url() 当合法值解析成功
+   但不渲染（连 blur 一起丢），Firefox 解析成功却画未滤镜的帧 —— 两种都会让玻璃
+   变成透明的洞。
+
+   代价也是真实的：真折射要把背景逐帧重算。所以只有 .card 和 .modal 这两个大面
+   上折射，导航条和按钮只保留模糊，小元件一律是「静态玻璃片」（不采样背景）。
    ========================================================== */
 
-/* 背后铺几团彩色光斑 —— 玻璃得有东西可糊，滚动时颜色才会透出来 */
+/* 背后铺几团彩色光斑 —— 玻璃得有东西可糊，折射才有东西可弯 */
 body.glass{
+  /* 玻璃的几何参数默认值，applyTheme 会按主题和浓度覆盖 */
+  --glass-blur:16px;
+  --glass-blur2:22px;
+  --glass-sat:180%;
+  --glass-edge:1px;
+  --glass-rim:rgba(255,255,255,.55);
+  --glass-hl2:rgba(255,255,255,.06);
+  --glass-sheen:rgba(255,255,255,.05);
+  --glass-glow:rgba(255,255,255,.30);
+  --glass-in:rgba(22,52,42,.10);
+  --glass-in-br:rgba(255,255,255,.14);
+  --glass-filter:url(#lg-default);
+
   background:
     radial-gradient(44vw 44vw at 10% 6%,  var(--bamboo-28),   transparent 60%),
     radial-gradient(40vw 40vw at 90% 16%, var(--gold-28),     transparent 60%),
@@ -634,23 +671,41 @@ body.glass{
   background-attachment:fixed;
 }
 
-/* 卡片 */
+/* 卡片：斜向高光 + 底色，四条阴影叠出「一块玻璃」的厚度 */
 body.glass .card{
-  background:var(--glass-bg);
+  background:
+    linear-gradient(150deg, var(--glass-sheen) 0%, transparent 46%),
+    var(--glass-bg);
   border:1px solid var(--glass-br);
   border-radius:22px;
-  box-shadow:var(--glass-sh), inset 0 1px 0 var(--glass-hl);
-  -webkit-backdrop-filter:blur(16px) saturate(180%);
-          backdrop-filter:blur(16px) saturate(180%);
+  box-shadow:
+    var(--glass-sh),
+    inset 0 0 0 var(--glass-edge) var(--glass-rim),  /* 一圈亮边 = 玻璃的厚度 */
+    inset 0 1px 0 var(--glass-hl),                   /* 顶边强高光 */
+    inset 0 -1px 0 var(--glass-hl2),                 /* 底边弱反光 */
+    inset 0 0 18px var(--glass-glow);                /* 边缘内侧柔光 */
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+          backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
 }
 
-/* 吸底 / 吸顶导航栏：玻璃最该出现在这儿 */
+/* 折射档：只给大面。data-lg 由 JS 在滤镜就绪后才打开 */
+body.glass[data-lg="on"] .card,
+body.glass[data-lg="on"] .modal{
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) var(--glass-filter,url(#lg-default));
+          backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) var(--glass-filter,url(#lg-default));
+}
+
+/* 吸底 / 吸顶导航栏：只模糊，不做折射。
+   它是 position:fixed 的，滚动时每帧都要重采样；再叠一层 SVG 滤镜会把它
+   从合成的快路径上踢下来，弱设备上最先掉帧的就是它。 */
 body.glass #tabbar{
   background:linear-gradient(180deg,var(--glass-bg2),var(--glass-bg));
   border-top:1px solid var(--glass-br);
-  box-shadow:0 -8px 28px var(--bg1-18), inset 0 1px 0 var(--glass-hl);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-          backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:0 -8px 28px var(--bg1-18),
+             inset 0 1px 0 var(--glass-hl),
+             inset 0 -1px 0 var(--glass-hl2);
+  -webkit-backdrop-filter:blur(var(--glass-blur2)) saturate(var(--glass-sat));
+          backdrop-filter:blur(var(--glass-blur2)) saturate(var(--glass-sat));
 }
 body.glass .tab.on{
   background:var(--glass-bg2);
@@ -664,39 +719,78 @@ body.glass .backdrop{
           backdrop-filter:blur(6px);
 }
 body.glass .modal{
-  background:var(--glass-bg2);
+  background:
+    linear-gradient(150deg, var(--glass-sheen) 0%, transparent 52%),
+    var(--glass-bg2);
   border:1px solid var(--glass-br);
   border-radius:24px;
-  box-shadow:var(--glass-sh), inset 0 1px 0 var(--glass-hl);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-          backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:
+    var(--glass-sh),
+    inset 0 0 0 var(--glass-edge) var(--glass-rim),
+    inset 0 1px 0 var(--glass-hl),
+    inset 0 -1px 0 var(--glass-hl2),
+    inset 0 0 20px var(--glass-glow);
+  -webkit-backdrop-filter:blur(var(--glass-blur2)) saturate(var(--glass-sat));
+          backdrop-filter:blur(var(--glass-blur2)) saturate(var(--glass-sat));
 }
 /* 玻璃模式下底部那条不要再盖一层实色，让弹窗本身的玻璃透上来；
    分隔线换成玻璃的高光边，不然按钮会像浮在半空 */
 body.glass .modal-foot{background:transparent;border-top-color:var(--glass-br)}
 
-/* 按钮 */
-body.glass .btn,
+/* 按钮：卡片内部的按钮**一律不带 backdrop-filter** —— 卡片本身已经是
+   backdrop root，它采样不到页面背景，只会白烧一层 GPU。
+   用 :not() 把两个特殊按钮摘出去，顺手把 .btn-danger 被吃掉的红修回来。 */
+body.glass .btn:not(.btn-primary):not(.btn-danger),
 body.glass .icon-btn{
-  background:var(--glass-bg);
+  background:var(--glass-in);
   border:1px solid var(--glass-br);
   box-shadow:inset 0 1px 0 var(--glass-hl);
-  -webkit-backdrop-filter:blur(10px) saturate(160%);
-          backdrop-filter:blur(10px) saturate(160%);
 }
 body.glass .btn-primary{
   background:var(--bamboo);
   border-color:var(--bamboo);
   color:var(--on-accent);
+  box-shadow:0 2px 10px var(--bamboo-25), inset 0 1px 0 var(--glass-hl);
+}
+/* 危险操作必须还是红的（原来被 body.glass .btn 的特异性吃掉了） */
+body.glass .btn-danger{
+  background:var(--cinnabar-16);
+  border-color:var(--cinnabar-50);
+  color:var(--jade);
+}
+body.glass .btn-danger:hover{background:var(--cinnabar-30);border-color:var(--cinnabar)}
+
+/* 顶栏那三个按钮不在任何 backdrop root 里，采样得到真背景 —— 保留轻模糊 */
+body.glass .topbar .icon-btn{
+  background:var(--glass-bg);
+  border-color:var(--glass-br);
+  -webkit-backdrop-filter:blur(10px) saturate(160%);
+          backdrop-filter:blur(10px) saturate(160%);
 }
 
-/* 输入框与各种小面板 */
+/* 输入框：做成「凹陷的玻璃」 */
 body.glass input,
 body.glass select,
 body.glass textarea{
-  background:var(--glass-bg);
-  border:1px solid var(--glass-br);
+  background:var(--glass-in);
+  border:1px solid var(--glass-in-br);
+  box-shadow:inset 0 1px 2px var(--bg1-16);
 }
+/* 原来 body.glass input 与 input:focus 特异性相同、但这一条在后面，
+   把 focus 的底色和边色全盖掉了；而 input 基础样式里有 outline:none，
+   于是键盘用户完全看不到焦点在哪。这里把 focus 抬到 (0,2,2) 并给出可见环。 */
+body.glass input:focus,
+body.glass select:focus,
+body.glass textarea:focus{
+  background:var(--panel-focus);
+  border-color:var(--bamboo);
+  box-shadow:0 0 0 3px var(--bamboo-25);
+}
+/* 静态玻璃片：不采样背景，只借一层色。
+   .task / .sub-card 原来用 --panel（浅色下 62% 白），压在 60% 白玻璃卡上就是
+   「白上白」，发闷；改成比卡片更透的凹陷色，层次立刻出来了。 */
+body.glass .task,
+body.glass .sub-card,
 body.glass .cloud-state,
 body.glass .diag,
 body.glass .themecard,
@@ -704,10 +798,12 @@ body.glass .glassswitch,
 body.glass .sumrow,
 body.glass .weekbox .d,
 body.glass .check{
-  background:var(--glass-bg);
-  border:1px solid var(--glass-br);
-  box-shadow:inset 0 1px 0 var(--glass-hl);
+  background:var(--glass-in);
+  border:1px solid var(--glass-in-br);
+  box-shadow:inset 0 1px 0 var(--glass-hl2);
 }
+body.glass .task:hover{border-color:var(--gold-35)}
+body.glass .sub-head:hover{background:var(--glass-hl2)}
 /* 选中态要在玻璃下也看得见 —— 上面那条特异性比 .themecard.on 高，
    会把选中环整个盖掉，看起来就像「叠了一层但没选中」。 */
 body.glass .themecard.on{
@@ -720,6 +816,9 @@ body.glass .task.done .check{
   background:var(--bamboo);
   color:var(--on-accent);
 }
+/* 切页的 fade 会把 .page 短暂变成 opacity<1 → 形成 backdrop root，
+   那 250ms 里卡片玻璃采样的是空页面。开玻璃时干脆不做这个淡入。 */
+body.glass .page.on{animation:none}
 
 /* ==========================================================
    滚动条

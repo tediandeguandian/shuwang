@@ -251,10 +251,13 @@ function applyTheme(theme, bgUrl, glassOp){
 
   // 背景照片。没图时设 none —— CSS 那边 .bg-photo 就整层不画。
   root.style.setProperty('--bg-img', img ? 'url("' + img + '")' : 'none');
-  // 照片上压的那层纱：让正文在任意一张图上都读得清，深浅各一套
+  // 照片上压的那层纱：让正文在任意一张图上都读得清，深浅各一套。
+  // 开了玻璃就把**中间那段**减薄 —— 顶栏和页脚的字直接压在照片上，那两段不能动；
+  // 中间是卡片区，卡片自己有底色，减薄不会影响卡内文字的对比度，反而让折射有细节可弯。
+  const vf = CFG.glass ? 0.70 : 1;
   root.style.setProperty('--photo-veil', light
-    ? 'linear-gradient(180deg, ' + rgba(t.bg1, .78) + ' 0%, ' + rgba(t.bg1, .58) + ' 38%, ' + rgba(t.bg1, .86) + ' 100%)'
-    : 'linear-gradient(180deg, ' + rgba(t.bg1, .72) + ' 0%, ' + rgba(t.bg1, .46) + ' 38%, ' + rgba(t.bg1, .84) + ' 100%)');
+    ? 'linear-gradient(180deg, ' + rgba(t.bg1, .78) + ' 0%, ' + rgba(t.bg1, .58 * vf) + ' 38%, ' + rgba(t.bg1, .86) + ' 100%)'
+    : 'linear-gradient(180deg, ' + rgba(t.bg1, .72) + ' 0%, ' + rgba(t.bg1, .46 * vf) + ' 38%, ' + rgba(t.bg1, .84) + ' 100%)');
   // 压在主强调色上的文字：强调色本身亮就用深字，暗就用白字
   root.style.setProperty('--on-accent', luma(t.bamboo) > 0.42 ? '#16201A' : '#FFFFFF');
   // 内嵌面板（输入框、下拉、小结框）的底与边
@@ -293,6 +296,29 @@ function applyTheme(theme, bgUrl, glassOp){
   root.style.setProperty('--glass-br',  'rgba(255,255,255,' + wa(br) + ')');
   root.style.setProperty('--glass-hl',  'rgba(255,255,255,' + wa(hl) + ')');
   root.style.setProperty('--glass-sh',  light ? '0 10px 34px rgba(30,60,100,.16)' : '0 10px 34px rgba(0,0,0,.45)');
+
+  // ---- 玻璃的几何参数：全部挂在同一个「浓度」上 ----
+  // 浓度越高 = 玻璃越厚 = 更不透明、更糊、边缘更亮。
+  // 唯独**折射强度不跟滑块走** —— 否则每拖一格都要重算位移贴图。
+  const gblur  = 6 + 12 * gop;
+  const gblur2 = 10 + 16 * gop;
+  const gsat   = 140 + 40 * gop;
+  const gedge  = Math.round((1 + 0.5 * gop) * 100) / 100;
+  const ain    = light ? (0.04 + 0.06 * gop) : (0.06 + 0.06 * gop);
+  root.style.setProperty('--glass-blur',  wa(gblur) + 'px');
+  root.style.setProperty('--glass-blur2', wa(gblur2) + 'px');
+  root.style.setProperty('--glass-sat',   wa(gsat) + '%');
+  root.style.setProperty('--glass-edge',  gedge + 'px');
+  root.style.setProperty('--glass-in',    'rgba(' + gTint + ',' + wa(ain) + ')');
+  root.style.setProperty('--glass-in-br', light ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.14)');
+  root.style.setProperty('--glass-rim',   'rgba(255,255,255,' + wa(light ? (0.45 + 0.45 * gop) : (0.14 + 0.16 * gop)) + ')');
+  root.style.setProperty('--glass-hl2',   light ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.06)');
+  root.style.setProperty('--glass-sheen', light ? 'rgba(255,255,255,.34)' : 'rgba(255,255,255,.05)');
+  // 边缘内侧的柔光：模拟光线从玻璃侧面透进来，是「厚度感」的主要来源
+  root.style.setProperty('--glass-glow',  light ? 'rgba(255,255,255,.30)' : 'rgba(255,255,255,.09)');
+
+  // 尺寸要等这一帧布局完才准，交给 rAF
+  if(typeof requestAnimationFrame === 'function') requestAnimationFrame(applyGlassLayers);
 }
 
 /** 第 i 套风格的显示名：用户改过就用改过的，没改过用预设名 */
@@ -1155,6 +1181,8 @@ function renderAll(){
   $('#page-record').innerHTML = renderRecord();
   renderTop();
   drawCharts();
+  // 卡片是 innerHTML 重建的，折射滤镜的内联变量每次都会丢，重贴一遍
+  if(typeof requestAnimationFrame === 'function') requestAnimationFrame(applyGlassLayers);
 }
 function renderTop(){
   const left = Calc.daysLeft();
@@ -1198,10 +1226,17 @@ function openModal(title, bodyHTML, submitLabel, handler, extraFootHTML){
     </div>';
   const first = $('#modalForm input, #modalForm select, #modalForm textarea');
   if(first) setTimeout(() => first.focus(), 60);
+  // 弹窗本身也可能是玻璃（.modal 参与折射），量完尺寸再贴
+  if(typeof requestAnimationFrame === 'function') requestAnimationFrame(applyGlassLayers);
 }
 function closeModal(){
   $('#modal-root').innerHTML = ''; modalSubmit = null;
   pendingThemeBg = undefined; pendingPickIdx = null;   // 没保存的换图 / 改名一并作废
+  if(glassDraft !== undefined){                       // 玻璃开关也只是预览，没保存就还原
+    CFG.glass = glassDraft;
+    if(document.body) document.body.classList.toggle('glass', !!CFG.glass);
+    glassDraft = undefined;
+  }
   clearThemePreview();      // 主题只是预览，没保存就还原
 }
 
@@ -1369,11 +1404,199 @@ function parseIntervals(text){
   return uniq.length ? uniq : null;
 }
 
-/** 预览玻璃开关：只改 body 类和勾选状态，不写进配置（关掉设置窗口时由 clearThemePreview 还原） */
+/* ================================================================
+   液态玻璃 · 折射层
+
+   原理：backdrop-filter 里挂一个 SVG 滤镜，用 feDisplacementMap 按一张
+   「位移贴图」把背景像素推开/吸进来，边缘就会像真玻璃一样弯折。
+   贴图必须和元素尺寸匹配（R=x 位移、G=y 位移、128=不动），所以按元素的
+   真实宽高现场生成一张很小的 PNG，缓存起来复用。
+
+   ⚠️ 只有 Chromium 渲染得出来。Safari 会把 url() 当合法值解析但不画，
+      还会把整条 backdrop-filter 判为无效（连 blur 一起丢）；Firefox 画的是
+      未滤镜的帧。所以能不能用**只能认引擎**，不能问 CSS，拿不准一律当不支持。
+   ================================================================ */
+const LG = {
+  cache: new Map(),   // '宽x高x圆角' -> { id, map }
+  maxEdge: 512,       // 贴图长边上限：位移场是平滑的，再大纯浪费
+  band: 26,           // 折射带宽 px（玻璃「边」的厚度）—— 只影响背景，不碰文字
+  disp: 56            // 最大位移 px。Chromium 的 feDisplacementMap 是最近邻采样，
+                      // 所以靠 CSS 的 blur() 先把背景磨平，再位移，块状感就看不出来了
+};
+
+/** 本机能不能吃 backdrop-filter 里的 SVG 滤镜 —— 只有 Blink 可以。 */
+let _lgEngine;
+function lgEngine(){
+  if(_lgEngine !== undefined) return _lgEngine;
+  _lgEngine = false;
+  try{
+    const nav = (typeof navigator !== 'undefined') ? navigator : {};
+    const ua  = String(nav.userAgent || '');
+    // userAgentData 是 Blink 独有；老 WebView 没有，退回 UA。
+    // CriOS/FxiOS/EdgiOS/OPiOS = iOS 上的套壳，内核全是 WebKit，必须排除。
+    const blink = !!nav.userAgentData ||
+      (/Chrome\/|Chromium\/|Edg\//.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua));
+    if(!blink) return _lgEngine;
+    if(/iPhone|iPad|iPod/.test(ua) || /Firefox\//.test(ua)) return _lgEngine;
+    // 版本下限 111：再早的 Chromium 对引用式滤镜不稳
+    const m = ua.match(/(?:Chrome|Chromium)\/(\d+)/);
+    if(m && Number(m[1]) < 111) return _lgEngine;
+    // 低端机停在毛玻璃档，别硬撑折射
+    if((nav.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory || 8) <= 4) return _lgEngine;
+    // 它不能证明支持，但 false 一定不支持
+    _lgEngine = !!(typeof CSS !== 'undefined' && CSS.supports &&
+                   CSS.supports('backdrop-filter', 'blur(1px)'));
+  }catch(e){ _lgEngine = false; }
+  return _lgEngine;
+}
+
+/** 圆角矩形的有符号距离场：>0 在内部（值=到边的距离），<0 在外部 */
+function lgSdf(px, py, w, h, r){
+  const qx = Math.min(Math.max(px, r), w - r);
+  const qy = Math.min(Math.max(py, r), h - r);
+  return r - Math.hypot(px - qx, py - qy);
+}
+
+/** 生成一张位移贴图（data URL）。按元素真实宽高比生成，所以宽卡片和方弹窗
+    的折射带宽是一致的 —— 这正是「一张方图拉满」做不到的事。 */
+function lgMakeUrl(W, H, R, band){
+  try{
+    const cv = document.createElement('canvas');
+    if(!cv || typeof cv.getContext !== 'function') return null;
+    const s  = Math.min(1, LG.maxEdge / Math.max(W, H));
+    const mw = Math.max(8, Math.round(W * s));
+    const mh = Math.max(8, Math.round(H * s));
+    cv.width = mw; cv.height = mh;
+    const ctx = cv.getContext('2d');
+    if(!ctx || typeof ctx.createImageData !== 'function') return null;
+
+    const img = ctx.createImageData(mw, mh), px = img.data;
+    const rr = Math.max(1, R * s), bb = Math.max(3, band * s);
+    for(let y = 0; y < mh; y++){
+      for(let x = 0; x < mw; x++){
+        const i = (y * mw + x) * 4;
+        let nx = 0, ny = 0, m = 0;
+        const d = lgSdf(x + .5, y + .5, mw, mh, rr);   // 到边的距离
+        if(d >= 0 && d < bb){
+          // 外法线（角上是 45° 方向）
+          const qx = Math.min(Math.max(x + .5, rr), mw - rr);
+          const qy = Math.min(Math.max(y + .5, rr), mh - rr);
+          const vx = x + .5 - qx, vy = y + .5 - qy, L = Math.hypot(vx, vy) || 1;
+          nx = vx / L; ny = vy / L;
+          // 唇缘剖面：两端都是 0，最外 1px 不位移，避免采样到元素外面留一圈白线
+          m = Math.sin(Math.PI * (d / bb));
+        }
+        px[i]     = 127.5 - 127 * m * nx;   // 负号 = 朝内采样，把背景「吸」进边缘
+        px[i + 1] = 127.5 - 127 * m * ny;
+        px[i + 2] = 128;
+        px[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return cv.toDataURL('image/png');
+  }catch(e){ return null; }
+}
+
+/** 建一个 <filter> 节点。特意用 createElementNS 而不是 innerHTML ——
+    SVG 的命名空间用 HTML 解析器拼字符串容易踩坑。 */
+function lgBuildFilter(id, href){
+  const NS = 'http://www.w3.org/2000/svg';
+  const f = document.createElementNS(NS, 'filter');
+  f.setAttribute('id', id);
+  f.setAttribute('x', '0');
+  f.setAttribute('y', '0');
+  f.setAttribute('width', '100%');
+  f.setAttribute('height', '100%');
+  f.setAttribute('filterUnits', 'objectBoundingBox');
+  f.setAttribute('primitiveUnits', 'userSpaceOnUse');
+  f.setAttribute('color-interpolation-filters', 'sRGB');
+
+  const img = document.createElementNS(NS, 'feImage');
+  img.setAttribute('href', href);
+  img.setAttribute('x', '0');
+  img.setAttribute('y', '0');
+  img.setAttribute('width', '100%');
+  img.setAttribute('height', '100%');
+  img.setAttribute('preserveAspectRatio', 'none');
+  img.setAttribute('result', 'map');
+
+  const disp = document.createElementNS(NS, 'feDisplacementMap');
+  disp.setAttribute('in', 'SourceGraphic');
+  disp.setAttribute('in2', 'map');
+  disp.setAttribute('scale', String(LG.disp * 2));
+  disp.setAttribute('xChannelSelector', 'R');
+  disp.setAttribute('yChannelSelector', 'G');
+
+  f.appendChild(img);
+  f.appendChild(disp);
+  return f;
+}
+
+/** 给页面上所有「大面」贴折射滤镜。渲染完 / 切页 / 改窗口尺寸后都要跑一次 ——
+    元素是 innerHTML 重建的，内联的 --glass-filter 每次都会丢。 */
+function applyGlassLayers(){
+  try{
+    const body = document.body;
+    if(!body) return;
+    if(!CFG || !CFG.glass || !lgEngine()){
+      if(body.removeAttribute) body.removeAttribute('data-lg');
+      return;
+    }
+    const host = $('#lg-gen');
+    if(!host || !host.appendChild) return;
+
+    const want = [];          // 这一轮需要的 { key, el }
+    $$('.card, .modal').forEach(el => {
+      const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
+      if(w < 40 || h < 30) return;            // 隐藏页 / 还没布局
+      let rad = 22;
+      try{
+        const cs = window.getComputedStyle(el);
+        rad = Math.round(parseFloat(cs && cs.borderTopLeftRadius) || 22);
+      }catch(e){ /* 拿不到就用 22 */ }
+      want.push({ el: el, key: w + 'x' + h + 'x' + rad, w: w, h: h, rad: rad });
+    });
+
+    if(!want.length){ if(body.removeAttribute) body.removeAttribute('data-lg'); return; }
+
+    // 尺寸没变就别重建滤镜节点 —— 每帧重建会让玻璃闪一下
+    const sig = want.map(x => x.key).join('|');
+    if(host.getAttribute('data-sig') !== sig){
+      if(body.removeAttribute) body.removeAttribute('data-lg');   // 先关闸
+      while(host.firstChild) host.removeChild(host.firstChild);
+      // 恒等兜底的 #lg-default 在 index.html 里，不在这个 defs 里，清掉不影响
+      want.forEach(x => {
+        let f = LG.cache.get(x.key);
+        if(!f && LG.cache.size < 48){
+          const url = lgMakeUrl(x.w, x.h, x.rad, LG.band);
+          if(url){ f = { id: 'lg-' + x.key, node: lgBuildFilter('lg-' + x.key, url) }; LG.cache.set(x.key, f); }
+        }
+        if(f && f.node) host.appendChild(f.node);
+      });
+      host.setAttribute('data-sig', sig);
+    }
+    want.forEach(x => { if(LG.cache.get(x.key)) x.el.style.setProperty('--glass-filter', 'url(#lg-' + x.key + ')'); });
+
+    if(body.setAttribute) body.setAttribute('data-lg', 'on');     // 滤镜就绪了才开闸
+  }catch(e){
+    // 任何异常都退回毛玻璃，绝不能让页面变成透明的洞
+    try{ if(document.body && document.body.removeAttribute) document.body.removeAttribute('data-lg'); }catch(_){}
+  }
+}
+
+/** 预览玻璃开关：只改内存和勾选状态，不写进配置。
+    注意要同步改 CFG.glass —— applyTheme 每次都会按 CFG.glass 重置 body 类，
+    不改的话「勾上开关 → 拖一下浓度滑块」就会把玻璃又打回去。 */
+let glassDraft;            // 打开设置那一刻的值，用来在没保存时还原
 function previewGlass(on){
-  if(document.body) document.body.classList.toggle('glass', !!on);
+  CFG.glass = !!on;
   const cb = $('[name="glass"]');
   if(cb) cb.checked = !!on;
+  if(document.body) document.body.classList.toggle('glass', !!on);
+  if(!on && document.body && document.body.removeAttribute) document.body.removeAttribute('data-lg');
+  // 让 applyTheme 重算一遍变量 —— 背景那层纱的浓薄也跟着开关变
+  if(typeof applyGlassPreview === 'function' && $('[name="glassOpacity"]')) applyGlassPreview();
+  else if(on && typeof requestAnimationFrame === 'function') requestAnimationFrame(applyGlassLayers);
 }
 
 /* 设置面板里「还没保存的改动」，关窗口时清掉 */
@@ -1512,6 +1735,7 @@ function openSettings(){
   const s = Store.state.settings;
   const th = CFG.theme;
   const cur = settingsPane;
+  glassDraft = CFG.glass;      // 记下开关的原始值，没保存就还原
   const body =
     /* ---- 分类标签 ---- */
     '<div class="set-tabs">' +
@@ -1614,13 +1838,16 @@ function openSettings(){
     '</div>' +
 
     '<label class="glassswitch"><input type="checkbox" name="glass"' + (CFG.glass ? ' checked' : '') + '>' +
-      '<span><b>液态玻璃效果</b> —— 卡片和导航栏变成半透明、带实时模糊的玻璃，背后衬一层彩色光斑。</span></label>' +
+      '<span><b>液态玻璃效果</b> —— 卡片变成真的玻璃：背景在边缘被折射、弯折，再叠一圈镜面高光。<br>' +
+      '<span style="color:var(--muted)">当前浏览器：' +
+      (lgEngine() ? '真折射' : '仅毛玻璃（真折射只在 Chromium 111+ 生效）') +
+      '</span></span></label>' +
     '<div class="opacityrow">' +
       '<span class="hint" style="margin:0">玻璃浓度</span>' +
       '<input type="range" name="glassOpacity" min="0" max="100" step="5" value="' + CFG.glassOpacity + '">' +
       '<span class="val" id="glassOpVal">' + CFG.glassOpacity + '%</span>' +
     '</div>' +
-    '<div class="hint" style="margin-top:-2px">好看但费性能：Chrome 每帧都要重新采样+模糊。' +
+    '<div class="hint" style="margin-top:-2px">好看但费性能：真折射要把背景逐帧重算。' +
     '手机或旧电脑上觉得卡，就把上面那个勾去掉（颜色不受影响）。</div>' +
 
     /* ---- 配色 ---- */
@@ -1729,6 +1956,7 @@ function openSettings(){
     }
     pendingThemeBg = undefined;
     pendingPickIdx = null;
+    glassDraft = undefined;   // 已经落盘了，关窗口时不要再还原
 
     rebuildCFG();      // 合并进 CFG，并刷新配色 / 标题
     Store.commit();    // 存盘 + 重渲染
@@ -1850,6 +2078,7 @@ function switchPage(page){
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.page === page));
   // 切页后图表容器才有宽度，需要重新测量绘制
   requestAnimationFrame(drawCharts);
+  requestAnimationFrame(applyGlassLayers);   // 新页面的卡片要重新贴折射滤镜
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
@@ -2721,6 +2950,13 @@ function boot(opts){
   // 关闭页面前，如果还有没传上去的改动，提醒一下（浏览器不保证能给时间传完）
   window.addEventListener('beforeunload', function(e){
     if(CLOUD.dirty && CLOUD.connected){ e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // 窗口尺寸变了，卡片尺寸跟着变 → 位移贴图要重做（防抖，别一边拖一边算）
+  let resizeTimer = 0;
+  window.addEventListener('resize', function(){
+    if(resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){ resizeTimer = 0; applyGlassLayers(); }, 200);
   });
 }
 
