@@ -248,14 +248,12 @@ textarea{min-height:80px;resize:vertical;line-height:1.7}
    所有字段仍然在同一个 <form> 里（隐藏的也会被 FormData 收到），
    所以「保存设置」的逻辑一行都不用改。 */
 .set-tabs{
-  position:sticky;top:-22px;z-index:6;
+  position:sticky;top:0;z-index:6;
   display:flex;gap:6px;overflow-x:auto;
-  /* 负外边距顶到弹窗边缘；padding-top 多留 22px 抵消 top:-22px，
-     这样吸顶时标签不会被裁掉，不吸顶时位置又刚好 */
-  margin:-22px -22px 16px;padding:34px 22px 12px;
+  /* 两侧负边距吃掉表单的 22px 内边距，让整条贴到弹窗边缘 */
+  margin:0 -22px 14px;padding:10px 22px;
   background:var(--bg2);
   border-bottom:1px solid var(--card-br);
-  border-radius:var(--radius) var(--radius) 0 0;
   -webkit-overflow-scrolling:touch;
 }
 .set-tabs::-webkit-scrollbar{display:none}
@@ -387,16 +385,38 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 .backdrop{position:fixed;inset:0;z-index:50;background:var(--veil);
   display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s}
 @keyframes fade{from{opacity:0}to{opacity:1}}
+/* 弹窗做成三段式：标题固定 / 内容区自己滚 / 底部按钮固定。
+   这样「保存」「取消」永远贴在底部，不会长表单滚到一半就找不到了。
+   要点：外层 overflow:hidden + 内容区 overflow:auto，而不是整个弹窗滚。 */
 .modal{
-  width:100%;max-width:560px;max-height:88vh;overflow:auto;
+  width:100%;max-width:560px;max-height:88vh;
+  display:flex;flex-direction:column;overflow:hidden;
   background:linear-gradient(180deg,var(--bg2),var(--bg1));
   border:1px solid var(--card-br);border-radius:var(--radius);
-  box-shadow:0 20px 60px var(--veil);padding:22px;
+  box-shadow:0 20px 60px var(--veil);padding:0;
   animation:rise .25s ease;
 }
 @keyframes rise{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal h3{font-family:var(--font-serif);font-size:19px;color:var(--gold);letter-spacing:1px;margin-bottom:16px}
-.modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.modal > h3{
+  flex:0 0 auto;
+  font-family:var(--font-serif);font-size:19px;color:var(--gold);letter-spacing:1px;
+  padding:22px 22px 0;margin:0 0 12px;
+}
+/* 只有内容区滚动；左右 22px 的内边距也从 .modal 挪到这儿 */
+.modal > form{
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  padding:0 22px 6px;
+  -webkit-overflow-scrolling:touch;
+}
+.modal-foot{
+  flex:0 0 auto;
+  display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;
+  margin:0;padding:13px 22px calc(13px + env(safe-area-inset-bottom));
+  background:var(--bg1);
+  border-top:1px solid var(--card-br);
+  border-radius:0 0 var(--radius) var(--radius);
+}
 .sealed{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;
   background:var(--cinnabar-12);border:1px dashed var(--cinnabar-50);font-size:13px;margin-bottom:14px}
 
@@ -651,6 +671,9 @@ body.glass .modal{
   -webkit-backdrop-filter:blur(22px) saturate(180%);
           backdrop-filter:blur(22px) saturate(180%);
 }
+/* 玻璃模式下底部那条不要再盖一层实色，让弹窗本身的玻璃透上来；
+   分隔线换成玻璃的高光边，不然按钮会像浮在半空 */
+body.glass .modal-foot{background:transparent;border-top-color:var(--glass-br)}
 
 /* 按钮 */
 body.glass .btn,
