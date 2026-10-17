@@ -67,7 +67,9 @@ const CONFIG = {
     { name:'暖棕书房', theme:{ bg1:'#2A1E16', bg2:'#382A1E', bg3:'#1E150F', bamboo:'#C98A3C', jade:'#F0E4D2', gold:'#E0B25E', cinnabar:'#C0563A', muted:'#A08C74' } },
     { name:'紫霞夜话', theme:{ bg1:'#1D1730', bg2:'#282041', bg3:'#150F26', bamboo:'#9B8CD8', jade:'#E9E4F5', gold:'#C9A961', cinnabar:'#D2607A', muted:'#8E86A8' } },
     { name:'樱霞初晴', theme:{ bg1:'#F8EEF3', bg2:'#F2E3EB', bg3:'#FCF6F9', bamboo:'#C4628C', jade:'#3A2A33', gold:'#A87B2C', cinnabar:'#BF4140', muted:'#8C7480' } },
-    { name:'墨黑简约', theme:{ bg1:'#16181A', bg2:'#1F2225', bg3:'#101214', bamboo:'#DCDCDC', jade:'#F2F2F2', gold:'#C0C0C0', cinnabar:'#E2603F', muted:'#8A8F94' } }
+    { name:'墨黑简约', theme:{ bg1:'#16181A', bg2:'#1F2225', bg3:'#101214', bamboo:'#DCDCDC', jade:'#F2F2F2', gold:'#C0C0C0', cinnabar:'#E2603F', muted:'#8A8F94' } },
+    // 液态玻璃：颜色之外还带 glass:true，会打开一层实时模糊的玻璃质感（见 app.css 的 body.glass 段）
+    { name:'液态玻璃', glass:true, theme:{ bg1:'#E7F0FA', bg2:'#D6E5F5', bg3:'#F3F8FD', bamboo:'#0A84FF', jade:'#12233B', gold:'#FF9F0A', cinnabar:'#FF453A', muted:'#5E7897' } }
   ],
   // ---- 每日轮换的武侠风励志语 ----
   mottos: [
@@ -151,6 +153,10 @@ function rebuildCFG(){
     storagePrefix: d.storagePrefix
   };
 
+  // 液态玻璃：用户在设置里显式开/关优先；没设过就跟随当前匹配到的那套预设
+  const matched = CFG.themes.find(p => sameTheme(p.theme, CFG.theme));
+  CFG.glass = (c.glass === undefined) ? !!(matched && matched.glass) : !!c.glass;
+
   // 掌握状态按「位置」使用：第一档 = 未掌握，最后一档 = 已掌握
   const mk = Object.keys(CFG.mastery);
   CFG.masteryStart = mk[0];
@@ -213,6 +219,8 @@ function applyTheme(theme){
 
   const light = luma(t.bg1) > 0.45;
   root.style.setProperty('--light', light ? '1' : '0');
+  // 液态玻璃：整段效果靠 body.glass 这个类开关，CSS 里只在这一类下用 backdrop-filter
+  if (document.body) document.body.classList.toggle('glass', !!CFG.glass);
   // 压在主强调色上的文字：强调色本身亮就用深字，暗就用白字
   root.style.setProperty('--on-accent', luma(t.bamboo) > 0.42 ? '#16201A' : '#FFFFFF');
   // 内嵌面板（输入框、下拉、小结框）的底与边
@@ -230,6 +238,14 @@ function applyTheme(theme){
   // 纸纹颗粒：深底撒白点，浅底撒黑点
   root.style.setProperty('--grain',  light ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.9)');
   root.style.setProperty('--grain2', light ? 'rgba(0,0,0,.13)' : 'rgba(255,255,255,.55)');
+
+  // 液态玻璃专用的三层底色/描边/高光/投影。深浅主题必须各一套 ——
+  // 深色主题下用白玻璃会让浅色正文看不见，所以深色下玻璃更暗、描边更亮。
+  root.style.setProperty('--glass-bg',  light ? 'rgba(255,255,255,.46)' : 'rgba(255,255,255,.09)');
+  root.style.setProperty('--glass-bg2', light ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.13)');
+  root.style.setProperty('--glass-br',  light ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.20)');
+  root.style.setProperty('--glass-hl',  light ? 'rgba(255,255,255,.90)' : 'rgba(255,255,255,.26)');
+  root.style.setProperty('--glass-sh',  light ? '0 10px 34px rgba(30,60,100,.16)' : '0 10px 34px rgba(0,0,0,.45)');
 }
 
 /** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。 */
@@ -1275,6 +1291,13 @@ function parseIntervals(text){
   return uniq.length ? uniq : null;
 }
 
+/** 预览玻璃开关：只改 body 类和勾选状态，不写进配置（关掉设置窗口时由 clearThemePreview 还原） */
+function previewGlass(on){
+  if(document.body) document.body.classList.toggle('glass', !!on);
+  const cb = $('[name="glass"]');
+  if(cb) cb.checked = !!on;
+}
+
 /** 预览成一套主题：只改 CSS 变量和取色器，不写进配置。
     关掉设置窗口时 clearThemePreview() 会还原，所以「不保存直接关」是安全的。 */
 function pickTheme(t){
@@ -1372,6 +1395,10 @@ function openSettings(){
     '</div>' +
     '<div class="hint">点一下立刻换色，可以先看看喜不喜欢 —— <b>不保存直接关掉这个窗口就还原</b>。' +
     '选中之后下面那些取色器也会跟着变成这套的值，还能再单个微调。</div>' +
+    '<label class="glassswitch"><input type="checkbox" name="glass"' + (CFG.glass ? ' checked' : '') + '>' +
+      '<span><b>液态玻璃效果</b> —— 卡片和导航栏变成半透明、带实时模糊的玻璃，背后衬一层彩色光斑。</span></label>' +
+    '<div class="hint" style="margin-top:-2px">好看但费性能：Chrome 每帧都要重新采样+模糊。' +
+    '手机或旧电脑上觉得卡，就把这个勾去掉（颜色不受影响）。</div>' +
 
     /* ---- 配色 ---- */
     '<div class="cfg-sec"><b>主题配色</b><span class="t-line"></span></div>' +
@@ -1453,6 +1480,8 @@ function openSettings(){
       if(isHex(v)) theme[k] = v;
     });
     cfg.theme = theme;
+    // 液态玻璃：显式存布尔值，别用 delete（不然关掉后会跌回预设的默认值）
+    cfg.glass = !!fd.get('glass');
 
     rebuildCFG();      // 合并进 CFG，并刷新配色 / 标题
     Store.commit();    // 存盘 + 重渲染
@@ -1573,6 +1602,12 @@ function switchPage(page){
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+/* 玻璃开关的勾选：立刻预览，不用等保存 */
+document.addEventListener('change', function(e){
+  const el = e.target;
+  if(el && el.name === 'glass') previewGlass(!!el.checked);
+});
+
 document.addEventListener('click', function(e){
   const el = e.target.closest('[data-action]');
   if(!el) return;
@@ -1588,6 +1623,9 @@ document.addEventListener('click', function(e){
       // 注意传的是预设里的 .theme，不是整个预设对象
       const p = (CFG.themes || [])[Number(el.dataset.idx)];
       if(p) pickTheme(p.theme || p);
+      // 玻璃效果也跟着预设走：点哪套就显示哪套本来的样子，勾选状态同步更新。
+      // （想要「这套颜色 + 玻璃」，点完再把下面的勾打上就行。）
+      if(p) previewGlass(!!p.glass);
       break;
     }
     case 'open-help': openHelp(); break;

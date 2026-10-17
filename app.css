@@ -75,6 +75,13 @@
   --grain:rgba(255,255,255,.9);
   --grain2:rgba(255,255,255,.55);
 
+  /* ---- 液态玻璃专用（深浅各一套，applyTheme 会重算）---- */
+  --glass-bg:rgba(255,255,255,.46);
+  --glass-bg2:rgba(255,255,255,.62);
+  --glass-br:rgba(255,255,255,.72);
+  --glass-hl:rgba(255,255,255,.90);
+  --glass-sh:0 10px 34px rgba(30,60,100,.16);
+
   /* ---- 与主题无关的 ---- */
   --radius:18px;
   --shadow:0 6px 20px rgba(0,0,0,.30);
@@ -310,11 +317,14 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 #tabbar{
   position:fixed;left:0;right:0;bottom:0;z-index:30;
   display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  /* 原来这里是半透明 + backdrop-filter:blur(14px)，而且是吸顶/吸底的，
-     滚动时每一帧都要把背后的内容重新模糊一次 —— 改成高不透明度底色，
-     看起来一样，滚动时不再有逐帧成本。 */
-  background:var(--bg3-95);
+  /* 原来这里是一片 95% 不透明的实心底色（默认主题下就是一整条深绿），
+     看着很闷。改成上下渐变 + 一道顶边高光 + 一点外投影，
+     像一块「抬起来的玻璃板」，深浅主题下都成立。
+     这里仍然不用 backdrop-filter：吸底元素滚动时每帧重模糊，是 Chrome 上最典型的卡顿源。
+     想要真模糊就开「设置 → 液态玻璃效果」，那一层是用户主动选的。 */
+  background:linear-gradient(180deg,var(--bg2-80),var(--bg3-95));
   border-top:1px solid var(--card-br);
+  box-shadow:0 -6px 18px var(--bg1-18), inset 0 1px 0 var(--card-hl);
 }
 .tab{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -419,7 +429,8 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
   #tabbar{
     position:sticky;bottom:auto;top:0;left:auto;right:auto;
     max-width:1080px;margin:0 auto 4px;border:1px solid var(--card-br);border-top:none;
-    border-radius:0 0 var(--radius) var(--radius);background:var(--bg3-95);
+    border-radius:0 0 var(--radius) var(--radius);
+    background:linear-gradient(180deg,var(--bg2-80),var(--bg3-95));
   }
   .tab{flex-direction:row;gap:8px;font-size:13.5px;padding:8px}
 }
@@ -488,3 +499,114 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
   color:var(--jade);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .themecard.on .nm{color:var(--bamboo)}
+
+/* ---------- 液态玻璃效果开关 ---------- */
+.glassswitch{
+  display:flex;align-items:flex-start;gap:10px;margin:10px 0 4px;
+  padding:11px 13px;border-radius:12px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--panel-br);
+}
+.glassswitch input{
+  width:18px;height:18px;flex:0 0 18px;margin-top:1px;accent-color:var(--bamboo);cursor:pointer;
+}
+.glassswitch span{font-size:12.5px;line-height:1.7;color:var(--jade)}
+.glassswitch b{color:var(--bamboo);font-weight:600}
+
+/* ==========================================================
+   液态玻璃（只在 body.glass 下生效）
+
+   这是全站**唯一**用 backdrop-filter 的一段，是有意的：
+   玻璃质感就来自「实时采样背后的内容再模糊」，没有替代品。
+   代价也是真实的 —— Chrome 每帧都要重新采样 + 模糊，
+   十几张卡片加上吸底导航一起开，弱设备上会掉帧。
+
+   所以它由「设置 → 液态玻璃效果」一个开关控制，用户自己选：
+   觉得卡就关掉，颜色一点不受影响。选「液态玻璃」那套预设时预置为开。
+   ========================================================== */
+
+/* 背后铺几团彩色光斑 —— 玻璃得有东西可糊，滚动时颜色才会透出来 */
+body.glass{
+  background:
+    radial-gradient(44vw 44vw at 10% 6%,  var(--bamboo-28),   transparent 60%),
+    radial-gradient(40vw 40vw at 90% 16%, var(--gold-28),     transparent 60%),
+    radial-gradient(48vw 48vw at 74% 86%, var(--bamboo-20),   transparent 62%),
+    radial-gradient(36vw 36vw at 16% 94%, var(--cinnabar-18), transparent 60%),
+    linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 45%,var(--bg3) 100%);
+  background-attachment:fixed;
+}
+
+/* 卡片 */
+body.glass .card{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-br);
+  border-radius:22px;
+  box-shadow:var(--glass-sh), inset 0 1px 0 var(--glass-hl);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+          backdrop-filter:blur(16px) saturate(180%);
+}
+
+/* 吸底 / 吸顶导航栏：玻璃最该出现在这儿 */
+body.glass #tabbar{
+  background:linear-gradient(180deg,var(--glass-bg2),var(--glass-bg));
+  border-top:1px solid var(--glass-br);
+  box-shadow:0 -8px 28px var(--bg1-18), inset 0 1px 0 var(--glass-hl);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+          backdrop-filter:blur(22px) saturate(180%);
+}
+body.glass .tab.on{
+  background:var(--glass-bg2);
+  box-shadow:inset 0 1px 0 var(--glass-hl);
+}
+
+/* 弹窗 */
+body.glass .backdrop{
+  background:var(--veil);
+  -webkit-backdrop-filter:blur(6px);
+          backdrop-filter:blur(6px);
+}
+body.glass .modal{
+  background:var(--glass-bg2);
+  border:1px solid var(--glass-br);
+  border-radius:24px;
+  box-shadow:var(--glass-sh), inset 0 1px 0 var(--glass-hl);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+          backdrop-filter:blur(22px) saturate(180%);
+}
+
+/* 按钮 */
+body.glass .btn,
+body.glass .icon-btn{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-br);
+  box-shadow:inset 0 1px 0 var(--glass-hl);
+  -webkit-backdrop-filter:blur(10px) saturate(160%);
+          backdrop-filter:blur(10px) saturate(160%);
+}
+body.glass .btn-primary{
+  background:var(--bamboo);
+  border-color:var(--bamboo);
+  color:var(--on-accent);
+}
+
+/* 输入框与各种小面板 */
+body.glass input,
+body.glass select,
+body.glass textarea{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-br);
+}
+body.glass .cloud-state,
+body.glass .diag,
+body.glass .themecard,
+body.glass .glassswitch,
+body.glass .sumrow,
+body.glass .weekbox .d,
+body.glass .check{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-br);
+  box-shadow:inset 0 1px 0 var(--glass-hl);
+}
+body.glass .task.done .check{
+  background:var(--bamboo);
+  color:var(--on-accent);
+}
