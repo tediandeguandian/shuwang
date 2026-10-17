@@ -59,18 +59,27 @@ const CONFIG = {
   // 每套都要给全 8 个色位：bg1/bg2/bg3 背景上中下、bamboo 主强调、jade 正文、
   // gold 标题描金、cinnabar 警示、muted 次要文字。
   // 浅色主题里 jade / muted 要写深色（它们是正文字色），深色主题里写浅色。
+  // bg 是背景照片，放在 site/bg/ 下（长边 1600、每张 100–300KB，见 bg/来源.md）。
+  // 不想用照片就把 bg 删掉，那一套会退回纯色渐变。
   themes: [
-    { name:'竹林夜色', theme:{ bg1:'#0E2419', bg2:'#16342A', bg3:'#0B1E15', bamboo:'#7FB069', jade:'#E8F0E3', gold:'#C9A961', cinnabar:'#C1442E', muted:'#8FA596' } },
-    { name:'宣纸日览', theme:{ bg1:'#F6F1E5', bg2:'#EFE8D8', bg3:'#FBF8F0', bamboo:'#4A7C59', jade:'#2C332D', gold:'#9C7A28', cinnabar:'#B03A24', muted:'#7B7566' } },
-    { name:'松风晨光', theme:{ bg1:'#EAF2EC', bg2:'#DCE9E0', bg3:'#F5FAF6', bamboo:'#3E7D5A', jade:'#26302A', gold:'#94782C', cinnabar:'#B4472F', muted:'#6E7C74' } },
-    { name:'靛蓝夜读', theme:{ bg1:'#101C2E', bg2:'#17293F', bg3:'#0A1422', bamboo:'#6FA8DC', jade:'#E3ECF5', gold:'#D9B26A', cinnabar:'#D9603B', muted:'#8496AC' } },
-    { name:'暖棕书房', theme:{ bg1:'#2A1E16', bg2:'#382A1E', bg3:'#1E150F', bamboo:'#C98A3C', jade:'#F0E4D2', gold:'#E0B25E', cinnabar:'#C0563A', muted:'#A08C74' } },
-    { name:'紫霞夜话', theme:{ bg1:'#1D1730', bg2:'#282041', bg3:'#150F26', bamboo:'#9B8CD8', jade:'#E9E4F5', gold:'#C9A961', cinnabar:'#D2607A', muted:'#8E86A8' } },
-    { name:'樱霞初晴', theme:{ bg1:'#F8EEF3', bg2:'#F2E3EB', bg3:'#FCF6F9', bamboo:'#C4628C', jade:'#3A2A33', gold:'#A87B2C', cinnabar:'#BF4140', muted:'#8C7480' } },
-    { name:'墨黑简约', theme:{ bg1:'#16181A', bg2:'#1F2225', bg3:'#101214', bamboo:'#DCDCDC', jade:'#F2F2F2', gold:'#C0C0C0', cinnabar:'#E2603F', muted:'#8A8F94' } },
+    { name:'竹林夜色', bg:'bg/zhulin-night.jpg', theme:{ bg1:'#0E2419', bg2:'#16342A', bg3:'#0B1E15', bamboo:'#7FB069', jade:'#E8F0E3', gold:'#C9A961', cinnabar:'#C1442E', muted:'#8FA596' } },
+    { name:'宣纸日览', bg:'bg/paper-day.jpg', theme:{ bg1:'#F6F1E5', bg2:'#EFE8D8', bg3:'#FBF8F0', bamboo:'#4A7C59', jade:'#2C332D', gold:'#9C7A28', cinnabar:'#B03A24', muted:'#7B7566' } },
+    { name:'松风晨光', bg:'bg/pine-morning.jpg', theme:{ bg1:'#EAF2EC', bg2:'#DCE9E0', bg3:'#F5FAF6', bamboo:'#3E7D5A', jade:'#26302A', gold:'#94782C', cinnabar:'#B4472F', muted:'#6E7C74' } },
+    { name:'靛蓝夜读', bg:'bg/indigo-night.jpg', theme:{ bg1:'#101C2E', bg2:'#17293F', bg3:'#0A1422', bamboo:'#6FA8DC', jade:'#E3ECF5', gold:'#D9B26A', cinnabar:'#D9603B', muted:'#8496AC' } },
+    { name:'暖棕书房', bg:'bg/warm-study.jpg', theme:{ bg1:'#2A1E16', bg2:'#382A1E', bg3:'#1E150F', bamboo:'#C98A3C', jade:'#F0E4D2', gold:'#E0B25E', cinnabar:'#C0563A', muted:'#A08C74' } },
+    { name:'紫霞夜话', bg:'bg/purple-dusk.jpg', theme:{ bg1:'#1D1730', bg2:'#282041', bg3:'#150F26', bamboo:'#9B8CD8', jade:'#E9E4F5', gold:'#C9A961', cinnabar:'#D2607A', muted:'#8E86A8' } },
+    { name:'樱霞初晴', bg:'bg/sakura-dawn.jpg', theme:{ bg1:'#F8EEF3', bg2:'#F2E3EB', bg3:'#FCF6F9', bamboo:'#C4628C', jade:'#3A2A33', gold:'#A87B2C', cinnabar:'#BF4140', muted:'#8C7480' } },
+    { name:'墨黑简约', bg:'bg/ink-minimal.jpg', theme:{ bg1:'#16181A', bg2:'#1F2225', bg3:'#101214', bamboo:'#DCDCDC', jade:'#F2F2F2', gold:'#C0C0C0', cinnabar:'#E2603F', muted:'#8A8F94' } },
     // 液态玻璃：颜色之外还带 glass:true，会打开一层实时模糊的玻璃质感（见 app.css 的 body.glass 段）
-    { name:'液态玻璃', glass:true, theme:{ bg1:'#E7F0FA', bg2:'#D6E5F5', bg3:'#F3F8FD', bamboo:'#0A84FF', jade:'#12233B', gold:'#FF9F0A', cinnabar:'#FF453A', muted:'#5E7897' } }
+    { name:'液态玻璃', glass:true, bg:'bg/glass-liquid.jpg', theme:{ bg1:'#E7F0FA', bg2:'#D6E5F5', bg3:'#F3F8FD', bamboo:'#0A84FF', jade:'#12233B', gold:'#FF9F0A', cinnabar:'#FF453A', muted:'#5E7897' } }
   ],
+  // 液态玻璃的浓度（0–100）：越大越白越不透明，越小越通透。只在开了玻璃效果时有用
+  glassOpacity: 55,
+  // 当前选中的是哪一套（改名 / 换背景图都按这个下标存）
+  themeIdx: 0,
+  // 用户改过的名字与背景图：{ '0':'我的夜色' } / { '0':'data:image/jpeg;base64,…' }
+  themeNames: {},
+  themeBgs: {},
   // ---- 每日轮换的武侠风励志语 ----
   mottos: [
     '仗剑不问出处，落笔自有山河。',
@@ -149,9 +158,20 @@ function rebuildCFG(){
     stages:       (Array.isArray(st.stages) && st.stages.length) ? st.stages : d.stages,
     theme:        Object.assign({}, d.theme, c.theme || {}),
     themes:       (Array.isArray(c.themes) && c.themes.length) ? c.themes : d.themes,
+    // 用户改过的风格名与背景图（按预设下标存，只存改过的那些）
+    themeNames:   Object.assign({}, d.themeNames, c.themeNames || {}),
+    themeBgs:     Object.assign({}, d.themeBgs, c.themeBgs || {}),
+    glassOpacity: (c.glassOpacity === undefined || isNaN(Number(c.glassOpacity)))
+                    ? d.glassOpacity : clamp(Number(c.glassOpacity), 0, 100),
     mottos:       pickArr(c.mottos, d.mottos),
     storagePrefix: d.storagePrefix
   };
+
+  // 当前选中的是第几套：优先用存过的，其次按配色反查，兜底 0
+  const idxSaved = Number(c.themeIdx);
+  const idxMatch = CFG.themes.findIndex(p => sameTheme(p.theme, CFG.theme));
+  CFG.themeIdx = (idxSaved >= 0 && idxSaved < CFG.themes.length) ? idxSaved
+               : (idxMatch >= 0 ? idxMatch : 0);
 
   // 液态玻璃：用户在设置里显式开/关优先；没设过就跟随当前匹配到的那套预设
   const matched = CFG.themes.find(p => sameTheme(p.theme, CFG.theme));
@@ -196,10 +216,13 @@ function migrateLabels(){
          写死成 rgba() 的话换主题时这些地方不会跟着变，所以统一由这里算。
       2) 明暗自适应变量（--on-accent / --panel / --veil …）。浅色主题下
          「半透明黑」会发灰发脏、白高光也看不见，这些必须跟着明暗走，不能写死。 */
-function applyTheme(theme){
+function applyTheme(theme, bgUrl, glassOp){
   const root = document.documentElement;
   const t = theme || CFG.theme || {};
   Object.keys(t).forEach(k => root.style.setProperty('--' + k, t[k]));
+
+  // 背景照片：不传就取「当前选中那套」的图。没有图就设 none，退回纯色渐变
+  const img = (bgUrl === undefined) ? themeBgOf(CFG.themeIdx) : bgUrl;
 
   const rgb = hex => {
     const h = String(hex || '').replace('#', '');
@@ -225,6 +248,13 @@ function applyTheme(theme){
   root.style.setProperty('color-scheme', light ? 'light' : 'dark');
   // 液态玻璃：整段效果靠 body.glass 这个类开关，CSS 里只在这一类下用 backdrop-filter
   if (document.body) document.body.classList.toggle('glass', !!CFG.glass);
+
+  // 背景照片。没图时设 none —— CSS 那边 .bg-photo 就整层不画。
+  root.style.setProperty('--bg-img', img ? 'url("' + img + '")' : 'none');
+  // 照片上压的那层纱：让正文在任意一张图上都读得清，深浅各一套
+  root.style.setProperty('--photo-veil', light
+    ? 'linear-gradient(180deg, ' + rgba(t.bg1, .78) + ' 0%, ' + rgba(t.bg1, .58) + ' 38%, ' + rgba(t.bg1, .86) + ' 100%)'
+    : 'linear-gradient(180deg, ' + rgba(t.bg1, .72) + ' 0%, ' + rgba(t.bg1, .46) + ' 38%, ' + rgba(t.bg1, .84) + ' 100%)');
   // 压在主强调色上的文字：强调色本身亮就用深字，暗就用白字
   root.style.setProperty('--on-accent', luma(t.bamboo) > 0.42 ? '#16201A' : '#FFFFFF');
   // 内嵌面板（输入框、下拉、小结框）的底与边
@@ -233,8 +263,11 @@ function applyTheme(theme){
   root.style.setProperty('--panel-focus', light ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.35)');
   // 弹窗背后的遮罩
   root.style.setProperty('--veil', light ? 'rgba(250,247,240,.78)' : 'rgba(0,0,0,.68)');
-  // 卡片：浅色主题用白一点的半透明，深色主题保持原来的微亮
-  root.style.setProperty('--card-bg', light ? 'rgba(255,255,255,.58)' : 'rgba(255,255,255,.05)');
+  // 卡片：浅色主题用白一点的半透明，深色主题保持原来的微亮。
+  // 铺了背景照片时再压深一点 —— 否则正文直接压在照片的高光上，读起来费劲。
+  root.style.setProperty('--card-bg', img
+    ? rgba(t.bg1, light ? .70 : .58)
+    : (light ? 'rgba(255,255,255,.58)' : 'rgba(255,255,255,.05)'));
   root.style.setProperty('--card-br', light ? 'rgba(0,0,0,.12)' : rgba(t.gold, .25));
   // 卡片那道内高光：浅色底下白色高光等于没有，换成极淡的暗边
   root.style.setProperty('--card-hl', light ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.045)');
@@ -245,20 +278,49 @@ function applyTheme(theme){
 
   // 液态玻璃专用的三层底色/描边/高光/投影。深浅主题必须各一套 ——
   // 深色主题下用白玻璃会让浅色正文看不见，所以深色下玻璃更暗、描边更亮。
-  root.style.setProperty('--glass-bg',  light ? 'rgba(255,255,255,.46)' : 'rgba(255,255,255,.09)');
-  root.style.setProperty('--glass-bg2', light ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.13)');
-  root.style.setProperty('--glass-br',  light ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.20)');
-  root.style.setProperty('--glass-hl',  light ? 'rgba(255,255,255,.90)' : 'rgba(255,255,255,.26)');
+  // 液态玻璃的浓度：滑块 0–100 换算成底色的透明度。
+  // 浅色主题用白玻璃；深色主题必须用「主题背景色的深玻璃」——
+  // 否则白玻璃配浅色正文（深色主题的 jade 是浅色）根本看不清。
+  const gop = clamp((glassOp === undefined ? CFG.glassOpacity : glassOp), 0, 100) / 100;
+  const gTint = light ? '255,255,255' : rgb(t.bg2).join(',');
+  const a1 = light ? (0.30 + 0.55 * gop) : (0.28 + 0.47 * gop);   // 卡片底
+  const a2 = Math.min(a1 + (light ? 0.16 : 0.10), 0.96);          // 导航 / 弹窗，再浓一点
+  const br = light ? (0.50 + 0.40 * gop) : (0.22 + 0.20 * gop);   // 边
+  const hl = Math.min(light ? (0.70 + 0.36 * gop) : (0.20 + 0.18 * gop), 1); // 顶边高光
+  const wa = a => Math.round(a * 1000) / 1000;
+  root.style.setProperty('--glass-bg',  'rgba(' + gTint + ',' + wa(a1) + ')');
+  root.style.setProperty('--glass-bg2', 'rgba(' + gTint + ',' + wa(a2) + ')');
+  root.style.setProperty('--glass-br',  'rgba(255,255,255,' + wa(br) + ')');
+  root.style.setProperty('--glass-hl',  'rgba(255,255,255,' + wa(hl) + ')');
   root.style.setProperty('--glass-sh',  light ? '0 10px 34px rgba(30,60,100,.16)' : '0 10px 34px rgba(0,0,0,.45)');
+}
+
+/** 第 i 套风格的显示名：用户改过就用改过的，没改过用预设名 */
+function themeNameOf(i){
+  const names = (CFG && CFG.themeNames) || {};
+  const ov = names[String(i)] !== undefined ? names[String(i)] : names[i];
+  if(ov) return String(ov);
+  const p = ((CFG && CFG.themes) || [])[i];
+  return (p && p.name) || ('风格 ' + (i + 1));
+}
+
+/** 第 i 套风格的背景图地址：用户换过就用换过的（可能是 data: URL），否则用预设自带的 */
+function themeBgOf(i){
+  const bgs = (CFG && CFG.themeBgs) || {};
+  const ov = bgs[String(i)] !== undefined ? bgs[String(i)] : bgs[i];
+  if(ov) return String(ov);
+  const p = ((CFG && CFG.themes) || [])[i];
+  return (p && p.bg) || '';
 }
 
 /** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。
     图表颜色是直接画进 SVG 属性里的（不读 CSS 变量），所以要把 CFG.theme
-    临时换过去重画一遍、画完立刻换回来 —— 否则点主题卡片时，除了图表全都变色了。 */
-function previewTheme(t){
+    临时换过去重画一遍、画完立刻换回来 —— 否则点主题卡片时，除了图表全都变色了。
+    bgOp 是这三样（背景图 / 玻璃浓度）的可选覆盖值，预览时传。 */
+function previewTheme(t, bgUrl, glassOp){
   const old = CFG.theme;
   CFG.theme = t;
-  applyTheme(t);
+  applyTheme(t, bgUrl, glassOp);
   try{ drawCharts(); }catch(e){ /* 页面还没渲染时没有图表，忽略 */ }
   CFG.theme = old;
 }
@@ -1139,6 +1201,7 @@ function openModal(title, bodyHTML, submitLabel, handler, extraFootHTML){
 }
 function closeModal(){
   $('#modal-root').innerHTML = ''; modalSubmit = null;
+  pendingThemeBg = undefined; pendingPickIdx = null;   // 没保存的换图 / 改名一并作废
   clearThemePreview();      // 主题只是预览，没保存就还原
 }
 
@@ -1313,22 +1376,109 @@ function previewGlass(on){
   if(cb) cb.checked = !!on;
 }
 
+/* 设置面板里「还没保存的改动」，关窗口时清掉 */
+let pendingThemeBg;        // undefined=没动过；''=恢复自带；'data:image/jpeg;…'=换成这张
+let pendingPickIdx = null; // 预览中的是哪一套（改名 / 换图按它存）
+
 /** 预览成一套主题：只改 CSS 变量和取色器，不写进配置。
-    关掉设置窗口时 clearThemePreview() 会还原，所以「不保存直接关」是安全的。 */
-function pickTheme(t){
+    关掉设置窗口时 clearThemePreview() 会还原，所以「不保存直接关」是安全的。
+    idx 是这套预设的下标 —— 用来取它自己的背景图，并把「改名 / 换图」那块切过去。 */
+function pickTheme(t, idx){
   if(!t || !t.bg1) return;          // 传错成整个预设对象时直接忽略，别把页面搞花
-  previewTheme(t);
+  const i = (idx === undefined || idx === null) ? CFG.themeIdx : Number(idx);
+  pendingPickIdx = i;
+  pendingThemeBg = undefined;       // 换了风格，之前那次没保存的换图作废
+  previewTheme(t, themeBgOf(i), currentGlassOp());
+  applyGlassPreview();
   // 把下面的取色器也换成这套的值，保存时就按这套存
   Object.keys(CONFIG.theme).forEach(k => {
     const el = $('[name="theme_' + k + '"]');
     if(el && t[k]) el.value = t[k];
   });
+  // 改名输入框与背景图缩略图跟着切
+  const nm = $('[name="themeName"]');
+  if(nm) nm.value = themeNameOf(i);
+  paintStyleThumb(themeBgOf(i));
   // 高亮当前选中的那张卡片
-  $$('.themecard').forEach(b => {
-    const i = Number(b.dataset.idx);
-    const p = (CFG.themes || [])[i];
-    b.classList.toggle('on', !!p && sameTheme(p.theme, t));
-  });
+  $$('.themecard').forEach(b => b.classList.toggle('on', Number(b.dataset.idx) === i));
+}
+
+/** 把缩略图的背景换成某张图（空串 = 没有图，露出纯色底） */
+function paintStyleThumb(url){
+  const el = $('#themeBgThumb');
+  if(!el) return;
+  el.style.backgroundImage = url ? 'url("' + url + '")' : '';
+}
+
+/** 把用户选的图缩到最长边 maxW、JPEG 质量 q，返回 data URL。
+    直接存原图会把 localStorage 和云同步撑爆，所以统一压一道。 */
+function shrinkImage(img, maxW, q){
+  const scale = Math.min(1, maxW / (img.width || maxW));
+  const w = Math.max(1, Math.round((img.width || maxW) * scale));
+  const h = Math.max(1, Math.round((img.height || maxW) * scale));
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  return cv.toDataURL('image/jpeg', q);
+}
+
+/** 选了本地图片之后：压缩 → 立刻预览 → 等「保存设置」才落盘 */
+function onThemeBgFile(input){
+  const f = input && input.files && input.files[0];
+  if(!f) return;
+  if(!/^image\//.test(f.type || '')){ toast('请选一张图片'); input.value = ''; return; }
+  const fr = new FileReader();
+  fr.onerror = () => toast('这个文件读不出来，换一张试试');
+  fr.onload = () => {
+    const im = new Image();
+    im.onerror = () => toast('这张图打不开，换一张试试');
+    im.onload = () => {
+      let url;
+      try{ url = shrinkImage(im, 1600, 0.72); }
+      catch(e){ toast('压缩失败：' + e.message); return; }
+      pendingThemeBg = url;
+      paintStyleThumb(url);
+      const c = previewedTheme();
+      previewTheme(c.theme, url, currentGlassOp());
+      toast('背景图已换好，点「保存设置」生效');
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+  input.value = '';   // 允许再选同一张
+}
+
+/** 恢复成这套风格自带的背景图 */
+function resetThemeBg(){
+  pendingThemeBg = '';
+  paintStyleThumb('');
+  const c = previewedTheme();
+  previewTheme(c.theme, '', currentGlassOp());
+  toast('已切回自带背景，点「保存设置」生效');
+}
+
+/** 设置面板里当前「正在看」的那一套：可能是刚点过但还没保存的卡片 */
+function previewedTheme(){
+  const i = (pendingPickIdx === null || pendingPickIdx === undefined) ? CFG.themeIdx : pendingPickIdx;
+  const p = (CFG.themes || [])[i];
+  return { idx:i, theme:(p && p.theme) || CFG.theme, bg: themeBgOf(i) };
+}
+
+/** 滑块上的浓度；没打开设置面板时退回配置里的值 */
+function currentGlassOp(){
+  const el = $('[name="glassOpacity"]');
+  const v = el ? Number(el.value) : NaN;
+  return isFinite(v) ? v : CFG.glassOpacity;
+}
+
+/** 玻璃浓度滑块的实时预览 */
+function applyGlassPreview(){
+  const op = currentGlassOp();
+  const out = $('#glassOpVal');
+  if(out) out.textContent = op + '%';
+  const c = previewedTheme();
+  previewTheme(c.theme, c.bg, op);
 }
 
 /** 当前主题和某一套预设是否一致（用来给选中的卡片加高亮） */
@@ -1398,22 +1548,48 @@ function openSettings(){
     /* ---- 主题风格（成套换，下面还能单个微调） ---- */
     '<div class="cfg-sec"><b>主题风格</b><span class="t-line"></span></div>' +
     '<div class="themes">' +
-      (CFG.themes || []).map((p, i) =>
-        '<button type="button" class="themecard' + (sameTheme(p.theme, th) ? ' on' : '') +
-          '" data-action="pick-theme" data-idx="' + i + '" title="' + esc(p.name) + '">' +
+      (CFG.themes || []).map((p, i) => {
+        const bg = themeBgOf(i);
+        return '<button type="button" class="themecard' + (sameTheme(p.theme, th) ? ' on' : '') +
+          '" data-action="pick-theme" data-idx="' + i + '" title="' + esc(themeNameOf(i)) + '">' +
+          '<span class="thumb" style="' + (bg ? "background-image:url('" + bg + "')" : '') + '"></span>' +
           '<span class="swatches">' +
             ['bg1','bg2','bamboo','gold','cinnabar','jade']
               .map(k => '<i style="background:' + esc(p.theme[k]) + '"></i>').join('') +
           '</span>' +
-          '<span class="nm">' + esc(p.name) + '</span>' +
-        '</button>').join('') +
+          '<span class="nm">' + esc(themeNameOf(i)) + '</span>' +
+        '</button>';
+      }).join('') +
     '</div>' +
     '<div class="hint">点一下立刻换色，可以先看看喜不喜欢 —— <b>不保存直接关掉这个窗口就还原</b>。' +
     '选中之后下面那些取色器也会跟着变成这套的值，还能再单个微调。</div>' +
+
+    /* ---- 当前这套：改名 + 换背景图 ---- */
+    '<div class="styleedit">' +
+      '<div class="row">' +
+        '<span class="bgthumb" id="themeBgThumb" style="background-image:url(\'' + themeBgOf(CFG.themeIdx) + '\')"></span>' +
+        '<div class="grow">' +
+          '<div class="row">' +
+            '<button type="button" class="btn btn-sm" data-action="pick-theme-bg">换一张背景图</button>' +
+            '<button type="button" class="btn btn-sm" data-action="reset-theme-bg">用自带的</button>' +
+          '</div>' +
+          '<div class="hint" style="margin:5px 0 0">换图会先按最长边 1600 压一遍再存（约 100–300KB），' +
+          '太大的原图会拖慢同步。</div>' +
+        '</div>' +
+      '</div>' +
+      fields.input('themeName', '这一套的名字（可以改成你喜欢的）', themeNameOf(CFG.themeIdx)) +
+      '<input type="file" accept="image/*" id="themeBgFile" class="hidden-file">' +
+    '</div>' +
+
     '<label class="glassswitch"><input type="checkbox" name="glass"' + (CFG.glass ? ' checked' : '') + '>' +
       '<span><b>液态玻璃效果</b> —— 卡片和导航栏变成半透明、带实时模糊的玻璃，背后衬一层彩色光斑。</span></label>' +
+    '<div class="opacityrow">' +
+      '<span class="hint" style="margin:0">玻璃浓度</span>' +
+      '<input type="range" name="glassOpacity" min="0" max="100" step="5" value="' + CFG.glassOpacity + '">' +
+      '<span class="val" id="glassOpVal">' + CFG.glassOpacity + '%</span>' +
+    '</div>' +
     '<div class="hint" style="margin-top:-2px">好看但费性能：Chrome 每帧都要重新采样+模糊。' +
-    '手机或旧电脑上觉得卡，就把这个勾去掉（颜色不受影响）。</div>' +
+    '手机或旧电脑上觉得卡，就把上面那个勾去掉（颜色不受影响）。</div>' +
 
     /* ---- 配色 ---- */
     '<div class="cfg-sec"><b>主题配色</b><span class="t-line"></span></div>' +
@@ -1497,6 +1673,27 @@ function openSettings(){
     cfg.theme = theme;
     // 液态玻璃：显式存布尔值，别用 delete（不然关掉后会跌回预设的默认值）
     cfg.glass = !!fd.get('glass');
+    // 玻璃浓度
+    const op = Number(fd.get('glassOpacity'));
+    if(isFinite(op)) cfg.glassOpacity = clamp(op, 0, 100);
+
+    // 当前这套：改名 / 换背景图（按预览时的下标存，可能不是原来选中的那套）
+    const pickIdx = (pendingPickIdx === null || pendingPickIdx === undefined) ? CFG.themeIdx : pendingPickIdx;
+    if(pickIdx >= 0 && pickIdx < (CFG.themes || []).length){
+      cfg.themeIdx = pickIdx;
+      cfg.themeNames = Object.assign({}, cfg.themeNames || {});
+      cfg.themeBgs   = Object.assign({}, cfg.themeBgs || {});
+      const nm = String(fd.get('themeName') || '').trim();
+      const preset = (CFG.themes[pickIdx] || {}).name || '';
+      if(nm && nm !== preset) cfg.themeNames[pickIdx] = nm;
+      else delete cfg.themeNames[pickIdx];
+      if(pendingThemeBg !== undefined){
+        if(pendingThemeBg === '') delete cfg.themeBgs[pickIdx];
+        else cfg.themeBgs[pickIdx] = pendingThemeBg;
+      }
+    }
+    pendingThemeBg = undefined;
+    pendingPickIdx = null;
 
     rebuildCFG();      // 合并进 CFG，并刷新配色 / 标题
     Store.commit();    // 存盘 + 重渲染
@@ -1551,9 +1748,13 @@ function openHelp(){
     <h4>想自己改代码</h4>\
     <p>页面拆成三个文件：<code>index.html</code>（结构）、<code>app.css</code>（样式）、<code>app.js</code>（全部逻辑），后端是 <code>worker.js</code>。用记事本 / VS Code 都能打开，每段开头都有中文注释。</p>\
     <p class="hint" style="margin-top:14px">提示：改文件之前先复制一份留底；改完保存，浏览器里按 F5 刷新就能看到效果。</p>\
+    <h4>主题风格怎么玩</h4>\
+    <p>「设置 → 主题风格」里有九套现成的：点一下整套换，<b>不保存直接关掉窗口就还原</b>。每套都配了一张真实照片当背景。</p>\
+    <p>选中一套之后，下面还能：<b>改它的名字</b>（输入框里随便写）、<b>换一张背景图</b>（选本地图片，会自动压到最长边 1600 再存）、<b>用自带的</b>（换回原来那张）。这些改动要点「保存设置」才生效。</p>\
+    <p><b>液态玻璃</b>是个独立开关：开了以后卡片变成半透明、带实时模糊。下面那根「玻璃浓度」滑块控制它有多透 —— 觉得字看不清就往右调浓一点，觉得闷就往左调透一点。手机上嫌滑起来发涩，直接把勾去掉。</p>\
     <h4>想自己加一套主题</h4>\
-    <p>打开 <code>app.js</code>，搜 <code>CONFIG.themes</code>，照着现成的抄一行就行，8 个色位都要给：</p>\
-    <p><code>{ name:「我的主题」, theme:{ bg1:「#…」, bg2:「#…」, bg3:「#…」, bamboo:「#…」, jade:「#…」, gold:「#…」, cinnabar:「#…」, muted:「#…」 } }</code></p>\
+    <p>打开 <code>app.js</code>，搜 <code>CONFIG.themes</code>，照着现成的抄一行就行，8 个色位都要给，<code>bg</code> 可以不给（那就是纯色渐变）：</p>\
+    <p><code>{ name:「我的主题」, bg:「bg/xxx.jpg」, theme:{ bg1:「#…」, bg2:「#…」, bg3:「#…」, bamboo:「#…」, jade:「#…」, gold:「#…」, cinnabar:「#…」, muted:「#…」 } }</code></p>\
     <p>浅色主题里 <code>jade</code>（正文）和 <code>muted</code>（次要文字）要写<b>深色</b>，深色主题里写浅色 —— 这两个是文字色，不是背景色。保存后刷新，「设置 → 主题风格」里就多出一张卡片。</p>\
   </div>';
   openModal('使用说明', body, null);
@@ -1620,7 +1821,15 @@ function switchPage(page){
 /* 玻璃开关的勾选：立刻预览，不用等保存 */
 document.addEventListener('change', function(e){
   const el = e.target;
-  if(el && el.name === 'glass') previewGlass(!!el.checked);
+  if(!el) return;
+  if(el.name === 'glass') previewGlass(!!el.checked);
+  if(el.id === 'themeBgFile') onThemeBgFile(el);   // 换背景图
+});
+
+/* 玻璃浓度滑块：拖动时实时预览（不等到松手），并同步右侧百分比 */
+document.addEventListener('input', function(e){
+  const el = e.target;
+  if(el && el.name === 'glassOpacity') applyGlassPreview();
 });
 
 document.addEventListener('click', function(e){
@@ -1635,14 +1844,22 @@ document.addEventListener('click', function(e){
     case 'go': switchPage(el.dataset.page); break;
     case 'open-settings': openSettings(); break;
     case 'pick-theme': {
-      // 注意传的是预设里的 .theme，不是整个预设对象
-      const p = (CFG.themes || [])[Number(el.dataset.idx)];
-      if(p) pickTheme(p.theme || p);
+      // 注意传的是预设里的 .theme，不是整个预设对象；
+      // 第二个参数是下标 —— 这套自己的背景图 / 名字要靠它取
+      const i = Number(el.dataset.idx);
+      const p = (CFG.themes || [])[i];
+      if(p) pickTheme(p.theme || p, i);
       // 玻璃效果也跟着预设走：点哪套就显示哪套本来的样子，勾选状态同步更新。
       // （想要「这套颜色 + 玻璃」，点完再把下面的勾打上就行。）
       if(p) previewGlass(!!p.glass);
       break;
     }
+    case 'pick-theme-bg': {
+      const f = $('#themeBgFile');
+      if(f) f.click(); else toast('这个浏览器不支持选文件');
+      break;
+    }
+    case 'reset-theme-bg': resetThemeBg(); break;
     case 'open-help': openHelp(); break;
     case 'open-cloud': openCloudPanel(); break;
     case 'reset-config': resetConfig(); break;

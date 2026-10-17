@@ -75,6 +75,10 @@
   --grain:rgba(255,255,255,.9);
   --grain2:rgba(255,255,255,.55);
 
+  /* ---- 主题背景照片（applyTheme 按当前风格注入）---- */
+  --bg-img:none;
+  --photo-veil:none;
+
   /* ---- 液态玻璃专用（深浅各一套，applyTheme 会重算）---- */
   --glass-bg:rgba(255,255,255,.46);
   --glass-bg2:rgba(255,255,255,.62);
@@ -120,8 +124,17 @@ body{
   background-size:5px 5px, 7px 7px;
   background-position:0 0, 2px 3px;
 }
-.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 16px}
 
+/* 主题背景照片。叠在纯色背景之上、内容之下；上面压一层同色系的纱，
+   保证正文在任何一张照片上都读得清（纱的浓淡由 applyTheme 按明暗算）。
+   --bg-img 为 none 时这一层等于不存在，观感就是原来的纯色渐变。 */
+.bg-photo{
+  background-image:var(--photo-veil, none), var(--bg-img, none);
+  background-size:cover, cover;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+}
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 16px}
 /* ---------- 顶栏 ---------- */
 .topbar{
   position:relative;z-index:2;
@@ -416,11 +429,9 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
   .icon-btn{padding:8px 9px}
   .icon-btn .lbl{display:none}
 
-  /* 主题卡片窄屏上三列就够，别挤成一团 */
-  .themes{grid-template-columns:repeat(3,1fr);gap:7px}
-  .themecard{padding:7px 7px 6px}
-  .themecard .swatches{height:20px}
-  .themecard .nm{font-size:11.5px}
+  /* 主题卡片：窄屏就两列。注意别在这里覆盖 .themes / .themecard ——
+     它们定义在文件后面的「主题风格选择器」一节，同等特异性下后写的赢，
+     写在这里等于没写（2026-10-17 发现的死规则，已删）。 */
 
   /* 一周七个小方块挤一挤，别顶到卡片边 */
   .weekbox{gap:4px}
@@ -486,6 +497,11 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 }
 .themecard{
   display:flex;flex-direction:column;gap:8px;
+  /* 卡片是 <button>。部分 WebView 的 UA 样式会把按钮设成 align-items:flex-start，
+     那样里面的色板条不会撑开、宽度塌成 0，只剩左右两条边框并成一根竖线
+     （2026-10-17 用户手机上的样子）。这里显式写死，不赌 UA 默认值。 */
+  align-items:stretch;
+  width:100%;min-width:0;
   padding:9px 9px 8px;border-radius:12px;cursor:pointer;text-align:center;
   background:var(--panel);border:1px solid var(--panel-br);
   transition:border-color .2s,transform .2s,box-shadow .2s;
@@ -493,15 +509,45 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
 .themecard:hover{border-color:var(--gold);transform:translateY(-1px)}
 .themecard.on{border-color:var(--bamboo);box-shadow:0 0 0 1px var(--bamboo-55)}
 .themecard .swatches{
-  display:flex;height:24px;border-radius:7px;overflow:hidden;
+  /* 用 grid 而不是 flex：六个色块各占 1fr，容器塌不塌都能铺满，最稳 */
+  display:grid;grid-template-columns:repeat(6,1fr);
+  width:100%;height:24px;border-radius:7px;overflow:hidden;
   border:1px solid var(--panel-br);
 }
-.themecard .swatches i{flex:1;display:block}
+.themecard .swatches i{display:block;width:100%;height:100%}
 .themecard .nm{
+  width:100%;
   font-family:var(--font-serif);font-size:12.5px;letter-spacing:.5px;
   color:var(--jade);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .themecard.on .nm{color:var(--bamboo)}
+/* 卡片顶部那张小图；没配背景图的风格会退回纯色块 */
+.themecard .thumb{
+  display:block;width:100%;height:46px;border-radius:8px;
+  background-color:var(--bg2);background-size:cover;background-position:center;
+  border:1px solid var(--panel-br);
+}
+
+/* ---------- 「当前风格」：改名 / 换背景图 ---------- */
+.styleedit{display:grid;gap:9px;margin-top:9px}
+.styleedit .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.styleedit .bgthumb{
+  width:66px;height:44px;flex:0 0 66px;border-radius:9px;
+  background-color:var(--bg2);background-size:cover;background-position:center;
+  border:1px solid var(--panel-br);
+}
+.styleedit .grow{flex:1 1 auto;min-width:0}
+.opacityrow{display:flex;align-items:center;gap:10px;margin-top:2px}
+.opacityrow input[type="range"]{
+  flex:1 1 auto;min-width:0;height:4px;border-radius:999px;
+  accent-color:var(--bamboo);cursor:pointer;
+}
+.opacityrow .val{
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+  min-width:36px;text-align:right;
+}
+/* 真正的文件选择框藏起来，由「换一张背景图」按钮代点 */
+.hidden-file{display:none !important}
 
 /* ---------- 液态玻璃效果开关 ---------- */
 .glassswitch{
@@ -609,6 +655,14 @@ body.glass .check{
   border:1px solid var(--glass-br);
   box-shadow:inset 0 1px 0 var(--glass-hl);
 }
+/* 选中态要在玻璃下也看得见 —— 上面那条特异性比 .themecard.on 高，
+   会把选中环整个盖掉，看起来就像「叠了一层但没选中」。 */
+body.glass .themecard.on{
+  border-color:var(--bamboo);
+  background:var(--glass-bg2);
+  box-shadow:0 0 0 1px var(--bamboo-55), inset 0 1px 0 var(--glass-hl);
+}
+body.glass .themecard:hover{transform:translateY(-1px)}
 body.glass .task.done .check{
   background:var(--bamboo);
   color:var(--on-accent);
