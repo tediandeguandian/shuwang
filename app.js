@@ -55,6 +55,20 @@ const CONFIG = {
     bamboo:'#7FB069', jade:'#E8F0E3', gold:'#C9A961',
     cinnabar:'#C1442E', muted:'#8FA596'
   },
+  // ---- 成套的主题风格（设置里点一下就能整套换，比逐个调色省事）----
+  // 每套都要给全 8 个色位：bg1/bg2/bg3 背景上中下、bamboo 主强调、jade 正文、
+  // gold 标题描金、cinnabar 警示、muted 次要文字。
+  // 浅色主题里 jade / muted 要写深色（它们是正文字色），深色主题里写浅色。
+  themes: [
+    { name:'竹林夜色', theme:{ bg1:'#0E2419', bg2:'#16342A', bg3:'#0B1E15', bamboo:'#7FB069', jade:'#E8F0E3', gold:'#C9A961', cinnabar:'#C1442E', muted:'#8FA596' } },
+    { name:'宣纸日览', theme:{ bg1:'#F6F1E5', bg2:'#EFE8D8', bg3:'#FBF8F0', bamboo:'#4A7C59', jade:'#2C332D', gold:'#9C7A28', cinnabar:'#B03A24', muted:'#7B7566' } },
+    { name:'松风晨光', theme:{ bg1:'#EAF2EC', bg2:'#DCE9E0', bg3:'#F5FAF6', bamboo:'#3E7D5A', jade:'#26302A', gold:'#94782C', cinnabar:'#B4472F', muted:'#6E7C74' } },
+    { name:'靛蓝夜读', theme:{ bg1:'#101C2E', bg2:'#17293F', bg3:'#0A1422', bamboo:'#6FA8DC', jade:'#E3ECF5', gold:'#D9B26A', cinnabar:'#D9603B', muted:'#8496AC' } },
+    { name:'暖棕书房', theme:{ bg1:'#2A1E16', bg2:'#382A1E', bg3:'#1E150F', bamboo:'#C98A3C', jade:'#F0E4D2', gold:'#E0B25E', cinnabar:'#C0563A', muted:'#A08C74' } },
+    { name:'紫霞夜话', theme:{ bg1:'#1D1730', bg2:'#282041', bg3:'#150F26', bamboo:'#9B8CD8', jade:'#E9E4F5', gold:'#C9A961', cinnabar:'#D2607A', muted:'#8E86A8' } },
+    { name:'樱霞初晴', theme:{ bg1:'#F8EEF3', bg2:'#F2E3EB', bg3:'#FCF6F9', bamboo:'#C4628C', jade:'#3A2A33', gold:'#A87B2C', cinnabar:'#BF4140', muted:'#8C7480' } },
+    { name:'墨黑简约', theme:{ bg1:'#16181A', bg2:'#1F2225', bg3:'#101214', bamboo:'#DCDCDC', jade:'#F2F2F2', gold:'#C0C0C0', cinnabar:'#E2603F', muted:'#8A8F94' } }
+  ],
   // ---- 每日轮换的武侠风励志语 ----
   mottos: [
     '仗剑不问出处，落笔自有山河。',
@@ -132,6 +146,7 @@ function rebuildCFG(){
     reviewIntervals: cleanIv(c.reviewIntervals),
     stages:       (Array.isArray(st.stages) && st.stages.length) ? st.stages : d.stages,
     theme:        Object.assign({}, d.theme, c.theme || {}),
+    themes:       (Array.isArray(c.themes) && c.themes.length) ? c.themes : d.themes,
     mottos:       pickArr(c.mottos, d.mottos),
     storagePrefix: d.storagePrefix
   };
@@ -169,11 +184,59 @@ function migrateLabels(){
   });
 }
 
-/** 把主题色注入 CSS 变量 */
-function applyTheme(){
+/** 把主题色注入 CSS 变量。
+    除了 8 个基础色，还算出两套东西：
+      1) 每个色的各档不透明度（--bamboo-18 这种）。样式里到处都在用「主题色 + 透明」，
+         写死成 rgba() 的话换主题时这些地方不会跟着变，所以统一由这里算。
+      2) 明暗自适应变量（--on-accent / --panel / --veil …）。浅色主题下
+         「半透明黑」会发灰发脏、白高光也看不见，这些必须跟着明暗走，不能写死。 */
+function applyTheme(theme){
   const root = document.documentElement;
-  Object.keys(CFG.theme).forEach(k => root.style.setProperty('--' + k, CFG.theme[k]));
+  const t = theme || CFG.theme || {};
+  Object.keys(t).forEach(k => root.style.setProperty('--' + k, t[k]));
+
+  const rgb = hex => {
+    const h = String(hex || '').replace('#', '');
+    const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+    return [parseInt(n.slice(0, 2), 16), parseInt(n.slice(2, 4), 16), parseInt(n.slice(4, 6), 16)];
+  };
+  const rgba = (hex, a) => { const c = rgb(hex); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; };
+  // 相对亮度，用来判断「这算深色主题还是浅色主题」
+  const luma = hex => rgb(hex).map(v => v / 255)
+    .map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4))
+    .reduce((s, v, i) => s + v * [.2126, .7152, .0722][i], 0);
+
+  const ALPHAS = [5, 8, 10, 12, 13, 16, 18, 20, 22, 25, 28, 30, 34, 35, 45, 50, 55, 60, 68, 70, 80, 94, 95];
+  Object.keys(t).forEach(k => {
+    ALPHAS.forEach(p => root.style.setProperty('--' + k + '-' + p, rgba(t[k], p / 100)));
+  });
+
+  const light = luma(t.bg1) > 0.45;
+  root.style.setProperty('--light', light ? '1' : '0');
+  // 压在主强调色上的文字：强调色本身亮就用深字，暗就用白字
+  root.style.setProperty('--on-accent', luma(t.bamboo) > 0.42 ? '#16201A' : '#FFFFFF');
+  // 内嵌面板（输入框、下拉、小结框）的底与边
+  root.style.setProperty('--panel',       light ? 'rgba(255,255,255,.62)' : 'rgba(0,0,0,.25)');
+  root.style.setProperty('--panel-br',    light ? 'rgba(0,0,0,.16)'      : 'rgba(255,255,255,.12)');
+  root.style.setProperty('--panel-focus', light ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.35)');
+  // 弹窗背后的遮罩
+  root.style.setProperty('--veil', light ? 'rgba(250,247,240,.78)' : 'rgba(0,0,0,.68)');
+  // 卡片：浅色主题用白一点的半透明，深色主题保持原来的微亮
+  root.style.setProperty('--card-bg', light ? 'rgba(255,255,255,.58)' : 'rgba(255,255,255,.05)');
+  root.style.setProperty('--card-br', light ? 'rgba(0,0,0,.12)' : rgba(t.gold, .25));
+  // 卡片那道内高光：浅色底下白色高光等于没有，换成极淡的暗边
+  root.style.setProperty('--card-hl', light ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.045)');
+  root.style.setProperty('--shadow', light ? '0 6px 20px rgba(0,0,0,.12)' : '0 6px 20px rgba(0,0,0,.30)');
+  // 纸纹颗粒：深底撒白点，浅底撒黑点
+  root.style.setProperty('--grain',  light ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.9)');
+  root.style.setProperty('--grain2', light ? 'rgba(0,0,0,.13)' : 'rgba(255,255,255,.55)');
 }
+
+/** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。 */
+function previewTheme(t){ applyTheme(t); }
+
+/** 还原成当前配置里的主题 */
+function clearThemePreview(){ applyTheme(); }
 
 /** 标题、页签文字等静态文案 */
 function applyStaticText(){
@@ -1043,7 +1106,10 @@ function openModal(title, bodyHTML, submitLabel, handler, extraFootHTML){
   const first = $('#modalForm input, #modalForm select, #modalForm textarea');
   if(first) setTimeout(() => first.focus(), 60);
 }
-function closeModal(){ $('#modal-root').innerHTML = ''; modalSubmit = null; }
+function closeModal(){
+  $('#modal-root').innerHTML = ''; modalSubmit = null;
+  clearThemePreview();      // 主题只是预览，没保存就还原
+}
 
 const fields = {
   select(name, label, options, cur, attrs){
@@ -1209,6 +1275,30 @@ function parseIntervals(text){
   return uniq.length ? uniq : null;
 }
 
+/** 预览成一套主题：只改 CSS 变量和取色器，不写进配置。
+    关掉设置窗口时 clearThemePreview() 会还原，所以「不保存直接关」是安全的。 */
+function pickTheme(t){
+  if(!t || !t.bg1) return;          // 传错成整个预设对象时直接忽略，别把页面搞花
+  previewTheme(t);
+  // 把下面的取色器也换成这套的值，保存时就按这套存
+  Object.keys(CONFIG.theme).forEach(k => {
+    const el = $('[name="theme_' + k + '"]');
+    if(el && t[k]) el.value = t[k];
+  });
+  // 高亮当前选中的那张卡片
+  $$('.themecard').forEach(b => {
+    const i = Number(b.dataset.idx);
+    const p = (CFG.themes || [])[i];
+    b.classList.toggle('on', !!p && sameTheme(p.theme, t));
+  });
+}
+
+/** 当前主题和某一套预设是否一致（用来给选中的卡片加高亮） */
+function sameTheme(a, b){
+  if(!a || !b) return false;
+  return Object.keys(CONFIG.theme).every(k => String(a[k] || '').toLowerCase() === String(b[k] || '').toLowerCase());
+}
+
 function openSettings(){
   const s = Store.state.settings;
   const th = CFG.theme;
@@ -1266,6 +1356,22 @@ function openSettings(){
     /* ---- 励志语 ---- */
     '<div class="cfg-sec"><b>每日励志语</b><span class="t-line"></span></div>' +
     fields.textarea('mottos','一行一句，每天自动换一句', CFG.mottos.join('\n'), 'rows="6"') +
+
+    /* ---- 主题风格（成套换，下面还能单个微调） ---- */
+    '<div class="cfg-sec"><b>主题风格</b><span class="t-line"></span></div>' +
+    '<div class="themes">' +
+      (CFG.themes || []).map((p, i) =>
+        '<button type="button" class="themecard' + (sameTheme(p.theme, th) ? ' on' : '') +
+          '" data-action="pick-theme" data-idx="' + i + '" title="' + esc(p.name) + '">' +
+          '<span class="swatches">' +
+            ['bg1','bg2','bamboo','gold','cinnabar','jade']
+              .map(k => '<i style="background:' + esc(p.theme[k]) + '"></i>').join('') +
+          '</span>' +
+          '<span class="nm">' + esc(p.name) + '</span>' +
+        '</button>').join('') +
+    '</div>' +
+    '<div class="hint">点一下立刻换色，可以先看看喜不喜欢 —— <b>不保存直接关掉这个窗口就还原</b>。' +
+    '选中之后下面那些取色器也会跟着变成这套的值，还能再单个微调。</div>' +
 
     /* ---- 配色 ---- */
     '<div class="cfg-sec"><b>主题配色</b><span class="t-line"></span></div>' +
@@ -1387,7 +1493,7 @@ function openHelp(){
     </ul>\
     <h4>这个页面你可以随便改</h4>\
     <p>任务、错题、成绩、复盘、设置，全部都能在这里直接增删改。改完<b>不用点保存</b>，1 秒后会自动传到云端。</p>\
-    <p>右上角「设置」里还能改：标题、姓名、中考日期、四个页面的名字、学科与满分、难度分级、错因分类、掌握状态、复习节奏、每日励志语、主题配色。列表类都用「一行一条」的写法：</p>\
+    <p>右上角「设置」里还能改：标题、姓名、中考日期、四个页面的名字、学科与满分、难度分级、错因分类、掌握状态、复习节奏、每日励志语、<b>主题风格</b>、主题配色。列表类都用「一行一条」的写法：</p>\
     <ul>\
       <li>学科：<code>物理|100|atom</code> —— 名称|满分|图标（后两项可省）</li>\
       <li>错因：<code>审题偏差|#B48CC8</code> —— 名称|颜色（颜色可省，会自动配色）</li>\
@@ -1401,16 +1507,27 @@ function openHelp(){
     <h4>想自己改代码</h4>\
     <p>页面拆成三个文件：<code>index.html</code>（结构）、<code>app.css</code>（样式）、<code>app.js</code>（全部逻辑），后端是 <code>worker.js</code>。用记事本 / VS Code 都能打开，每段开头都有中文注释。</p>\
     <p class="hint" style="margin-top:14px">提示：改文件之前先复制一份留底；改完保存，浏览器里按 F5 刷新就能看到效果。</p>\
+    <h4>想自己加一套主题</h4>\
+    <p>打开 <code>app.js</code>，搜 <code>CONFIG.themes</code>，照着现成的抄一行就行，8 个色位都要给：</p>\
+    <p><code>{ name:「我的主题」, theme:{ bg1:「#…」, bg2:「#…」, bg3:「#…」, bamboo:「#…」, jade:「#…」, gold:「#…」, cinnabar:「#…」, muted:「#…」 } }</code></p>\
+    <p>浅色主题里 <code>jade</code>（正文）和 <code>muted</code>（次要文字）要写<b>深色</b>，深色主题里写浅色 —— 这两个是文字色，不是背景色。保存后刷新，「设置 → 主题风格」里就多出一张卡片。</p>\
   </div>';
   openModal('使用说明', body, null);
 }
 
 function exportJSON(){
   const data = JSON.stringify(Store.state, null, 2);
+  const fileName = '竹林修行录备份_' + todayStr() + '.json';
+  // 在安卓 App（WebView）里 <a download> 不会真的落盘，交给原生写进「下载」目录；
+  // 浏览器里 window.AndroidBridge 不存在，照旧走原来的下载方式。
+  if(window.AndroidBridge && typeof window.AndroidBridge.saveFile === 'function'){
+    window.AndroidBridge.saveFile(fileName, data);
+    return;
+  }
   const blob = new Blob([data], { type:'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '竹林修行录备份_' + todayStr() + '.json';
+  a.download = fileName;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast('备份已导出到下载文件夹');
@@ -1467,6 +1584,12 @@ document.addEventListener('click', function(e){
     /* ---- 导航 ---- */
     case 'go': switchPage(el.dataset.page); break;
     case 'open-settings': openSettings(); break;
+    case 'pick-theme': {
+      // 注意传的是预设里的 .theme，不是整个预设对象
+      const p = (CFG.themes || [])[Number(el.dataset.idx)];
+      if(p) pickTheme(p.theme || p);
+      break;
+    }
     case 'open-help': openHelp(); break;
     case 'open-cloud': openCloudPanel(); break;
     case 'reset-config': resetConfig(); break;
