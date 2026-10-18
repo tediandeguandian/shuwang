@@ -80,6 +80,10 @@ const CONFIG = {
   // 用户改过的名字与背景图：{ '0':'我的夜色' } / { '0':'data:image/jpeg;base64,…' }
   themeNames: {},
   themeBgs: {},
+  // 自动轮换：off / bg-open（每次打开换图）/ bg-daily（每天换图）/ theme-daily（每天换整套）
+  rotateMode: 'off',
+  rotateState: { at: '', idx: -1 },   // 上次轮换到哪一天、哪一套
+  bgPick: -1,                          // 轮换时临时盖住当前主题自带的那张图（-1 = 不盖）
   // ---- 每日轮换的武侠风励志语 ----
   mottos: [
     '仗剑不问出处，落笔自有山河。',
@@ -161,6 +165,11 @@ function rebuildCFG(){
     // 用户改过的风格名与背景图（按预设下标存，只存改过的那些）
     themeNames:   Object.assign({}, d.themeNames, c.themeNames || {}),
     themeBgs:     Object.assign({}, d.themeBgs, c.themeBgs || {}),
+    // 轮换：模式认白名单，bgPick 认非负整数，别的一律当没设置
+    rotateMode:   /^(off|bg-open|bg-daily|theme-daily)$/.test(String(c.rotateMode || ''))
+                    ? c.rotateMode : d.rotateMode,
+    rotateState:  Object.assign({}, d.rotateState, c.rotateState || {}),
+    bgPick:       (function(){ const n = Number(c.bgPick); return (isFinite(n) && n >= 0) ? n : -1; })(),
     glassOpacity: (c.glassOpacity === undefined || isNaN(Number(c.glassOpacity)))
                     ? d.glassOpacity : clamp(Number(c.glassOpacity), 0, 100),
     mottos:       pickArr(c.mottos, d.mottos),
@@ -221,8 +230,10 @@ function applyTheme(theme, bgUrl, glassOp){
   const t = theme || CFG.theme || {};
   Object.keys(t).forEach(k => root.style.setProperty('--' + k, t[k]));
 
-  // 背景照片：不传就取「当前选中那套」的图。没有图就设 none，退回纯色渐变
-  const img = (bgUrl === undefined) ? themeBgOf(CFG.themeIdx) : bgUrl;
+  // 背景照片：不传就取「当前选中那套」的图；开了背景轮换时由 bgPick 那张盖住它。
+  // 没有图就设 none，退回纯色渐变。
+  const bgIdx = (CFG && CFG.bgPick >= 0) ? CFG.bgPick : CFG.themeIdx;
+  const img = (bgUrl === undefined) ? themeBgOf(bgIdx) : bgUrl;
 
   const rgb = hex => {
     const h = String(hex || '').replace('#', '');
@@ -337,6 +348,53 @@ function themeBgOf(i){
   if(ov) return String(ov);
   const p = ((CFG && CFG.themes) || [])[i];
   return (p && p.bg) || '';
+}
+
+/** 自动轮换：每次冷启动或跨天时，把背景（或整套主题）往后挪一套。
+    只在启动时跑，返回 true 表示配置变了，调用方要 rebuildCFG() 重新套用一遍。
+    只动 config，不动用户手动选中的那套配色（除非模式就是「换整套主题」）。 */
+function applyRotation(){
+  const cfg = Store.state.config = Store.state.config || {};
+  const mode = cfg.rotateMode || 'off';
+  if(mode === 'off'){
+    if(cfg.bgPick !== undefined) delete cfg.bgPick;
+    return false;
+  }
+
+  // 可用的池子：换图模式跳过没有背景图的那套
+  const pool = ((CONFIG.themes || []).map((p, i) => i))
+    .filter(i => mode === 'theme-daily' || themeBgOf(i));
+  if(!pool.length) return false;
+
+  const now = new Date();
+  const today = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+  const st = cfg.rotateState || {};
+  // 「每次打开」不看到期，直接往前挪；其余按日期
+  const due = (mode === 'bg-open') || (st.at !== today);
+
+  if(!due){
+    // 今天已经换过了：只要把「显示用的那张」对齐到上次的选择
+    if(mode !== 'theme-daily' && st.idx >= 0 && cfg.bgPick !== st.idx){
+      cfg.bgPick = st.idx;
+      return true;
+    }
+    return false;
+  }
+
+  const at = pool.indexOf(st.idx);
+  const next = pool[(at < 0) ? 0 : (at + 1) % pool.length];
+  cfg.rotateState = { at: today, idx: next };
+
+  if(mode === 'theme-daily'){
+    const p = CONFIG.themes[next];
+    if(p && p.theme) cfg.theme = Object.assign({}, p.theme);
+    cfg.themeIdx = next;
+    delete cfg.bgPick;
+  }else{
+    cfg.bgPick = next;      // 只盖背景，配色一点不动
+  }
+  Store.save();             // 立刻落盘，否则下次启动会从同一张重来
+  return true;
 }
 
 /** 预览一套主题：只改 CSS 变量，不写进配置。关掉设置窗口时会还原。
@@ -1685,7 +1743,9 @@ function resetThemeBg(){
 function previewedTheme(){
   const i = (pendingPickIdx === null || pendingPickIdx === undefined) ? CFG.themeIdx : pendingPickIdx;
   const p = (CFG.themes || [])[i];
-  return { idx:i, theme:(p && p.theme) || CFG.theme, bg: themeBgOf(i) };
+  // 背景用「轮换选中的那张」，否则调浓度时背景会跳回主题自带的那张
+  const bgI = (CFG.bgPick >= 0) ? CFG.bgPick : i;
+  return { idx:i, theme:(p && p.theme) || CFG.theme, bg: themeBgOf(bgI) };
 }
 
 /** 滑块上的浓度；没打开设置面板时退回配置里的值 */
@@ -1818,7 +1878,8 @@ function openSettings(){
       }).join('') +
     '</div>' +
     '<div class="hint">点一下立刻换色，可以先看看喜不喜欢 —— <b>不保存直接关掉这个窗口就还原</b>。' +
-    '选中之后下面那些取色器也会跟着变成这套的值，还能再单个微调。</div>' +
+    '选中之后下面那些取色器也会跟着变成这套的值，还能再单个微调。' +
+    '<br>配色 / 背景图 / 玻璃 / 轮换<b>只存在这台设备上，不会同步到云端</b>，手机和电脑可以各用各的。</div>' +
 
     /* ---- 当前这套：改名 + 换背景图 ---- */
     '<div class="styleedit">' +
@@ -1836,6 +1897,19 @@ function openSettings(){
       fields.input('themeName', '这一套的名字（可以改成你喜欢的）', themeNameOf(CFG.themeIdx)) +
       '<input type="file" accept="image/*" id="themeBgFile" class="hidden-file">' +
     '</div>' +
+
+    /* ---- 自动轮换 ---- */
+    '<div class="cfg-sec"><b>自动轮换</b><span class="t-line"></span></div>' +
+    fields.select('rotateMode', '背景 / 主题怎么换', [
+      { v:'off',         t:'不轮换（就用我选的这套）' },
+      { v:'bg-open',     t:'每次打开换一张背景图' },
+      { v:'bg-daily',    t:'每天换一张背景图' },
+      { v:'theme-daily', t:'每天换整套主题（连配色一起）' }
+    ], CFG.rotateMode) +
+    '<div class="hint">「换背景图」只换背后的照片，配色不动，九张图轮流用；' +
+    '「换整套主题」连颜色一起换，像每天换了个新本子。<br>' +
+    '轮换只影响显示，<b>你选中的那套不会被改掉</b>；' +
+    '想固定下来，就在上面手动「换一张背景图」—— 那一下会把轮换关掉。</div>' +
 
     '<label class="glassswitch"><input type="checkbox" name="glass"' + (CFG.glass ? ' checked' : '') + '>' +
       '<span><b>液态玻璃效果</b> —— 卡片变成真的玻璃：背景在边缘被折射、弯折，再叠一圈镜面高光。<br>' +
@@ -1939,6 +2013,11 @@ function openSettings(){
     const op = Number(fd.get('glassOpacity'));
     if(isFinite(op)) cfg.glassOpacity = clamp(op, 0, 100);
 
+    // 自动轮换
+    const rm = String(fd.get('rotateMode') || 'off');
+    cfg.rotateMode = /^(off|bg-open|bg-daily|theme-daily)$/.test(rm) ? rm : 'off';
+    if(cfg.rotateMode === 'off') delete cfg.bgPick;
+
     // 当前这套：改名 / 换背景图（按预览时的下标存，可能不是原来选中的那套）
     const pickIdx = (pendingPickIdx === null || pendingPickIdx === undefined) ? CFG.themeIdx : pendingPickIdx;
     if(pickIdx >= 0 && pickIdx < (CFG.themes || []).length){
@@ -1952,6 +2031,9 @@ function openSettings(){
       if(pendingThemeBg !== undefined){
         if(pendingThemeBg === '') delete cfg.themeBgs[pickIdx];
         else cfg.themeBgs[pickIdx] = pendingThemeBg;
+        // 手动换了图 = 想固定这一张，把轮换关掉，否则下次开机会被盖回去
+        cfg.rotateMode = 'off';
+        delete cfg.bgPick;
       }
     }
     pendingThemeBg = undefined;
@@ -2308,6 +2390,32 @@ window.addEventListener('resize', debounce(drawCharts, 160));
       这样两台设备各改各的，也不会把对方的改动冲掉。
    ================================================================ */
 
+/* ---------------- 主题是本机设置，不进云端 ----------------
+   配色、背景图、玻璃、轮换这些都是「这台设备看着舒服」的东西，
+   推给另一台设备只会互相打架（手机上挑的图，电脑上未必想要）。
+   所以推之前把它们剥掉；拉回来时再拿本机的盖回去。
+   注意：手动「导出 JSON 备份」仍然包含它们 —— 那是用户自己拷本机，不是同步。 */
+const LOCAL_ONLY_CFG = [
+  'theme', 'themes', 'themeIdx', 'themeNames', 'themeBgs',
+  'glass', 'glassOpacity', 'rotateMode', 'rotateState', 'bgPick'
+];
+
+/** 把 config 拆成「能上云的」和「只留本机的」两份 */
+function splitConfig(cfg){
+  const remote = {}, local = {};
+  Object.keys(cfg || {}).forEach(k => {
+    if(LOCAL_ONLY_CFG.indexOf(k) >= 0) local[k] = cfg[k];
+    else remote[k] = cfg[k];
+  });
+  return { remote: remote, local: local };
+}
+
+/** 要上传的那份状态：config 里只留能上云的键（浅拷贝，不动 Store.state） */
+function syncableState(){
+  const st = Store.state || {};
+  return Object.assign({}, st, { config: splitConfig(st.config).remote });
+}
+
 const CLOUD = {
   api: '',
   session: '',
@@ -2471,7 +2579,7 @@ const CLOUD = {
           }
         }
         const data = await this.req('/api/state', {
-          method:'PUT', body:{ baseRev: this.rev, state: Store.state }
+          method:'PUT', body:{ baseRev: this.rev, state: syncableState() }
         });
         this.rev = Number(data.rev) || 0;
         this.updatedAt = data.updatedAt || '';
@@ -2533,7 +2641,7 @@ const CLOUD = {
     if(!info) return;
     this.write('backup_cloud_' + Date.now(), info.state);
     try{
-      const data = await this.req('/api/state', { method:'PUT', body:{ baseRev: info.rev, state: Store.state } });
+      const data = await this.req('/api/state', { method:'PUT', body:{ baseRev: info.rev, state: syncableState() } });
       this.rev = Number(data.rev) || 0;
       this.dirty = false; this.write('dirty', false);
       this.lastSynced = deepCopy(Store.state);
@@ -2658,9 +2766,13 @@ function mergeFromCloud(cloud){
 /** 用云端数据整份覆盖本机（保留本机的展开状态这类界面偏好） */
 function applyCloudState(cloud){
   const ui = (Store.state && Store.state.ui) || { openSubjects: [] };
+  // 主题 / 背景图 / 玻璃这些是本机设置，云端那份里没有它们 ——
+  // 整份换回来之后必须拿本机的盖住，否则一拉云端，配色就被打回默认
+  const localTheme = splitConfig(Store.state && Store.state.config).local;
   Store.state = Object.assign({}, cloud);
   normalizeState();
   Store.state.ui = ui;
+  Store.state.config = Object.assign({}, Store.state.config || {}, localTheme);
   rebuildCFG();
   Store.save();
   renderAll();
@@ -2774,6 +2886,9 @@ function cloudSectionHTML(){
        (c.connected ? '<br>云端版本号 ' + esc(String(c.rev)) + (c.updatedAt ? '　最后更新 ' + esc(c.updatedAt) : '') : ''))
     : '还没填后端地址。把 Cloudflare Worker 部署好之后，点下面的按钮把地址和口令填进去。') + '</div>';
   h += '<div class="row"><button type="button" class="btn" data-action="open-cloud">' + ICON.cloud + ' 打开云同步设置</button></div>';
+  h += '<div class="hint">同步的是任务、错题、成绩和各项文字设置。' +
+       '<b>主题、背景图、玻璃效果、自动轮换只存在本机</b>，不会传到云端 —— ' +
+       '手机和电脑可以各用各的配色。</div>';
   return h;
 }
 
@@ -2933,6 +3048,8 @@ function boot(opts){
   Store.load();
   normalizeState();   // 兼容旧版数据 / 手工改过的数据，补齐缺失字段
   rebuildCFG();       // 合并「设置」里的自定义配置（同时注入配色、标题）
+  // 该轮换了（跨天 / 每次打开）就再套一遍；返回 false 时什么都不用做
+  if(applyRotation()) rebuildCFG();
 
   CLOUD.init();
   renderAll();
