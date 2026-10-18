@@ -2416,6 +2416,13 @@ function syncableState(){
   return Object.assign({}, st, { config: splitConfig(st.config).remote });
 }
 
+/** 指纹：只算「能上云的那部分」。只改配色 / 背景 / 玻璃时指纹不变，
+    就不必往云端推一份一模一样的东西（云端的版本号也不会白白加一）。 */
+function syncSig(){
+  try{ return JSON.stringify(syncableState()); }
+  catch(e){ return ''; }
+}
+
 const CLOUD = {
   api: '',
   session: '',
@@ -2428,6 +2435,7 @@ const CLOUD = {
   busy: false,
   pushTimer: null,
   lastSynced: null,     // 上一次同步成功时的状态快照，用来判断「本机动过没有」
+  lastSig: '',          // 上一次上传的「可同步部分」指纹：一样就不必再推
   conflictInfo: null,
   cloudSide: null,
   cloudSideRev: 0,
@@ -2578,6 +2586,8 @@ const CLOUD = {
             renderAll();
           }
         }
+        // 先算指纹再发：发出去的就是这一份，成功之后拿它当基准
+        const sig = syncSig();
         const data = await this.req('/api/state', {
           method:'PUT', body:{ baseRev: this.rev, state: syncableState() }
         });
@@ -2585,6 +2595,7 @@ const CLOUD = {
         this.updatedAt = data.updatedAt || '';
         this.dirty = false; this.write('dirty', false);
         this.lastSynced = deepCopy(Store.state);
+        this.lastSig = sig;
         this.busy = false;                       // 先落 busy，再刷状态文字，否则标签会卡在「同步中」
         this.setStatus('saved', '已同步到云端');
         return;
@@ -2605,6 +2616,11 @@ const CLOUD = {
   /* ---- 本机一有改动就排队上传 ---- */
   afterChange(){
     if(!this.api) return;                    // 没配云端：纯本地，啥都不用做
+    // 只改了外观（配色 / 背景图 / 玻璃 / 轮换）时，能上云的那部分一个字都没变 ——
+    // 推上去等于发一份和在云端一模一样的副本，还会白涨版本号，让另一台设备弹冲突。
+    // 所以先比指纹，一样就直接不排队，连「待同步」的圆点都不亮。
+    const sig = syncSig();
+    if(this.lastSig && sig === this.lastSig) return;
     this.dirty = true; this.write('dirty', true);
     if(!this.connected){ this.setStatus('off', '还没连接'); return; }
     this.schedulePush();
@@ -2645,6 +2661,7 @@ const CLOUD = {
       this.rev = Number(data.rev) || 0;
       this.dirty = false; this.write('dirty', false);
       this.lastSynced = deepCopy(Store.state);
+      this.lastSig = syncSig();
       this.conflictInfo = null;
       closeModal(); this.setStatus('saved', '已用你的版本覆盖云端');
     }catch(e){
@@ -2776,6 +2793,8 @@ function applyCloudState(cloud){
   rebuildCFG();
   Store.save();
   renderAll();
+  // 刚和云端对齐，把指纹更新一下：否则下一次改外观会被误判成「有东西要传」
+  if(typeof CLOUD !== 'undefined'){ CLOUD.lastSig = syncSig(); CLOUD.dirty = false; }
   paintCloudStatus();
 }
 
